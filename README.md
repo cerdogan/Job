@@ -79,3 +79,10 @@ Parallelism
 Miscellaneous
 	o Bit manipulation 
 	o Differences between C and C++
+
+---------------------------------------------------------
+Tools
+---------------------------------------------------------
+
+Visualization
+	o Graphviz
