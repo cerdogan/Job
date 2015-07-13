@@ -13,7 +13,7 @@ __Planning:__
  - __DFS__
  - __BFS__
  - __A*__
- - D*    
+ - D\*    
  - Simulated annealing
  - MDP - Value iteration
  - MDP - Policy iteration
@@ -36,6 +36,7 @@ __Planning:__
  - Potential fields
  - Bug algorithm!
  - Voronoi diagrams
+ - Genetic algorithms
 
 __Perception:__
  - Plane fitting
