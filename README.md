@@ -12,7 +12,7 @@ ___Bold items are completed___.
 __Planning:__
  - __DFS__
  - __BFS__
- - A*
+ - __A*__
  - D*    
  - Simulated annealing
  - MDP - Value iteration
