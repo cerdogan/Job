@@ -4,9 +4,6 @@
  * @date July 12, 2015
  * @brief Implementation of breadth-first search for the 8-puzzle example in Russell & Norvig AI 
  * book. Start state: 7 2 4; 5 N 6; 8 3 1. Goal state: N 1 2; 3 4 5; 6 7 8.
- * NOTE: Finding the path. With recursive implementation, because we visit earlier states, 
- * the path information is preserved in the stack memory. In iterative, we need to allocate
- * additional memory for this information.
  */
 
 #include <assert.h>
