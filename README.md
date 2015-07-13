@@ -9,7 +9,7 @@ Algorithms
 
 ___Bold items are completed___.
 
-Planning
+__Planning:__
  - __DFS__
  - __BFS__
  - A*
@@ -37,18 +37,18 @@ Planning
  - Bug algorithm!
  - Voronoi diagrams
 
-Perception:
+__Perception:__
  - Plane fitting
  - Oversegmentation
  - RANSAC
  - 3D view geometry
  - PCA
 
-Control
+__Control:__
  - LQR control
  - Lyapunov function
 
-Miscellaneous
+__Miscellaneous:__
  - Kalman Filter	
  - EKF
  - Gauss-Newton Optimization
@@ -61,25 +61,26 @@ Miscellaneous
 C/C++
 ---------------------------------------------------------
 
-Data structure
+__Data structure:__
  - Linked list
  - Stack
  - Queue
 
-Search
+__Search:__
  - Binary search
  - Re-balancing trees
+ - Tree traversals
 
-Sorting
+__Sorting:__
  - Insertion
  - Merge
  - Quick
 
-Parallelism
+__Parallelism:__
  - Deadlocks
  - Run conditions
 
-Miscellaneous
+__Miscellaneous:__
  - Bit manipulation 
  - Differences between C and C++
 
@@ -87,5 +88,5 @@ Miscellaneous
 Tools
 ---------------------------------------------------------
 
-Visualization
+__Visualization:__
  - Graphviz
