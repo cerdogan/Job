@@ -7,9 +7,11 @@ C. Erdogan
 Algorithms
 ---------------------------------------------------------
 
+___Bold items are completed___.
+
 Planning
- + DFS
- + BFS
+ - __DFS__
+ - __BFS__
  - A*
  - D*    
  - Simulated annealing
