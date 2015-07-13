@@ -8,81 +8,82 @@ Algorithms
 ---------------------------------------------------------
 
 Planning
-	o DFS
-	o BFS
-	o A*
-	o Simulated annealing
-	o MDP - Value iteration
-	o MDP - Policy iteration
-  o Decision tree
-	o Discrete constraint satisfaction
-	o Min-max algorithm
-	o Partial-order planning
-	o GraphPlan
-	o Rejection sampling
-	o Monte-Carlo Localization
-	o MCMC 
-	o Fuzzy logic?
-  o Dynamic programming
-	o Hidden Markov Models (HMMs)
-	o Support vector machines (SVMs)
-  o Expectation-Maximization
-  o Neural networks
-	o Reinforcement learning
-	o Cell decomposition
-	o Potential fields
-	o Bug algorithm!
-	o Voronoi diagrams
+ + DFS
+ + BFS
+ - A*
+ - D*    
+ - Simulated annealing
+ - MDP - Value iteration
+ - MDP - Policy iteration
+ - Decision tree
+ - Discrete constraint satisfaction
+ - Min-max algorithm
+ - Partial-order planning
+ - GraphPlan
+ - Rejection sampling
+ - Monte-Carlo Localization
+ - MCMC 
+ - Fuzzy logic?
+ - Dynamic programming
+ - Hidden Markov Models (HMMs)
+ - Support vector machines (SVMs)
+ - Expectation-Maximization
+ - Neural networks
+ - Reinforcement learning
+ - Cell decomposition
+ - Potential fields
+ - Bug algorithm!
+ - Voronoi diagrams
 
 Perception:
-	o Plane fitting
-	o Oversegmentation
-	o RANSAC
-	o 3D view geometry
-  o PCA
+ - Plane fitting
+ - Oversegmentation
+ - RANSAC
+ - 3D view geometry
+ - PCA
 
 Control
-	o LQR control
-	o Lyapunov function
+ - LQR control
+ - Lyapunov function
 
 Miscellaneous
-	o Kalman Filter	
-	o EKF
-	o Gauss-Newton Optimization
-	o KD-trees
-	o Sparse-matrix manipulation
-	o Simplex
-  o SVD
+ - Kalman Filter	
+ - EKF
+ - Gauss-Newton Optimization
+ - KD-trees
+ - Sparse-matrix manipulation
+ - Simplex
+ - SVD
 	
 ---------------------------------------------------------
 C/C++
 ---------------------------------------------------------
 
 Data structure
-	o Linked list
-	o Stack
-	o Queue
+ - Linked list
+ - Stack
+ - Queue
 
 Search
-	o Binary search
-	o Re-balancing trees
+ - Binary search
+ - Re-balancing trees
 
 Sorting
-	o Insertion
-	o Merge
-	o Quick
+ - Insertion
+ - Merge
+ - Quick
 
 Parallelism
-	o Deadlocks
-	o Run conditions
+ - Deadlocks
+ - Run conditions
 
 Miscellaneous
-	o Bit manipulation 
-	o Differences between C and C++
+ - Bit manipulation 
+ - Differences between C and C++
 
 ---------------------------------------------------------
 Tools
 ---------------------------------------------------------
 
 Visualization
-	o Graphviz
+ - Graphviz
