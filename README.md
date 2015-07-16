@@ -15,7 +15,7 @@ __Planning:__
  - __A*__
  - D\*    
  - __Simulated annealing__
- - MDP - Value iteration
+ - __MDP - Value iteration__
  - MDP - Policy iteration
  - Decision tree
  - Discrete constraint satisfaction
@@ -37,6 +37,7 @@ __Planning:__
  - Bug algorithm!
  - Voronoi diagrams
  - Genetic algorithms
+ - POMDPs
 
 __Perception:__
  - Plane fitting
