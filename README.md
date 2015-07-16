@@ -14,7 +14,7 @@ __Planning:__
  - __BFS__
  - __A*__
  - D\*    
- - Simulated annealing
+ - __Simulated annealing__
  - MDP - Value iteration
  - MDP - Policy iteration
  - Decision tree
