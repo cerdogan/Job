@@ -16,7 +16,7 @@ __Planning:__
  - D\*    
  - __Simulated annealing__
  - __MDP - Value iteration__
- - MDP - Policy iteration
+ - __MDP - Policy iteration__
  - Decision tree
  - Discrete constraint satisfaction
  - Min-max algorithm
