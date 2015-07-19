@@ -17,7 +17,7 @@ __Planning:__
  - __Simulated annealing__
  - __MDP - Value iteration__
  - __MDP - Policy iteration__
- - Decision tree
+ - __Decision tree__
  - Discrete constraint satisfaction
  - Min-max algorithm
  - Partial-order planning
