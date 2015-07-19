@@ -22,13 +22,17 @@ using namespace std;
 vector <string> attrNames;
 vector <vector <string> > attrs;
 vector < vector <string> > examples;
+FILE* graphFile;
 
 /* ********************************************************************************************* */
 struct Node {
 	int index;
 	int label;
+	int nCount;
 	vector <Node*> children;
 	Node (int count, int i = -1, int l = -1) : index(i), label(l) {
+		static int bla = 0;
+		nCount = bla++;
 //		if(count != 0) children = vector <Node*> (count, NULL);
 	}
 };
@@ -189,12 +193,18 @@ Node* createTree (const set <int>& activeAttrs, const vector < vector <string> >
 /* ********************************************************************************************* */
 void printTree (Node* root, int level) {
 
-	if(root->label == -1)
-		printf("%d: decision: '%s'\n", level, attrNames[root->index].c_str());
-	else 
-		printf("%d: label: '%d'\n", level, root->label);
-	for(int i = 0; i < root->children.size(); i++) 
+	if(root->label != -1) fprintf(graphFile, "%s%d [label=%s];\n", root->label == 1 ? "Yes" : "No", 
+		root->nCount, root->label == 1 ? "Yes" : "No");
+	vector <string>& attrs_ = attrs[root->index];
+	for(int i = 0; i < root->children.size(); i++) {
+		if(root->children[i]->label == -1)
+			fprintf(graphFile, "%s -- %s [label=%s];\n", attrNames[root->index].c_str(), 
+				attrNames[root->children[i]->index].c_str(), attrs_[i].c_str());
+		else 
+			fprintf(graphFile, "%s -- %s%d [label=%s];\n", attrNames[root->index].c_str(), 
+				root->children[i]->label == 1 ? "Yes" : "No", root->children[i]->nCount, attrs_[i].c_str());
 		printTree(root->children[i], level+1);
+	}
 }
 
 /* ********************************************************************************************* */
@@ -208,7 +218,12 @@ int main (int argc, char* argv[]) {
 	for(int i = 0; i < 10; i++) newAttrs.insert(i);
 	Node* root = createTree(newAttrs, examples, 0);
 
-	// Print tree
+	// Draw the tree
+	graphFile = fopen("graph.dot", "w+");
+	fprintf(graphFile, "graph {\n");
 	printTree(root, 0);
+	fprintf(graphFile, "}\n");
+	fclose(graphFile);
+	system("dot -Tpng graph.dot -o graph.png");
 }
 /* ********************************************************************************************* */
