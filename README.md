@@ -18,7 +18,7 @@ __Planning:__
  - __MDP - Value iteration__
  - __MDP - Policy iteration__
  - __Decision tree__
- - Discrete constraint satisfaction
+ - __Discrete constraint satisfaction (...)__
  - Min-max algorithm
  - Partial-order planning
  - GraphPlan
