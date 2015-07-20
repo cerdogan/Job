@@ -1,0 +1,217 @@
+graph {
+AK [style=filled fillcolor=red]
+AK -- WA;
+
+AL [style=filled fillcolor=yellow]
+AL -- TN;
+AL -- GA;
+AL -- FL;
+AL -- MS;
+
+AR [style=filled fillcolor=green]
+AR -- MO;
+AR -- TN;
+AR -- MS;
+AR -- LA;
+AR -- TX;
+AR -- OK;
+
+AZ [style=filled fillcolor=red]
+AZ -- UT;
+AZ -- CO;
+AZ -- NM;
+AZ -- CA;
+AZ -- NV;
+
+CA [style=filled fillcolor=green]
+CA -- OR;
+CA -- NV;
+CA -- HI;
+
+CO [style=filled fillcolor=blue]
+CO -- WY;
+CO -- NE;
+CO -- KS;
+CO -- OK;
+CO -- NM;
+CO -- UT;
+
+CT [style=filled fillcolor=yellow]
+CT -- MA;
+CT -- RI;
+CT -- NY;
+
+DC [style=filled fillcolor=red]
+DC -- MD;
+DC -- VA;
+
+DE [style=filled fillcolor=yellow]
+DE -- PA;
+DE -- NJ;
+DE -- MD;
+
+FL [style=filled fillcolor=red]
+FL -- GA;
+
+GA [style=filled fillcolor=green]
+GA -- NC;
+GA -- SC;
+GA -- TN;
+
+HI [style=filled fillcolor=red]
+
+IA [style=filled fillcolor=yellow]
+IA -- MN;
+IA -- WI;
+IA -- IL;
+IA -- MO;
+IA -- NE;
+IA -- SD;
+
+ID [style=filled fillcolor=red]
+ID -- MT;
+ID -- WY;
+ID -- UT;
+ID -- NV;
+ID -- OR;
+ID -- WA;
+
+IL [style=filled fillcolor=red]
+IL -- WI;
+IL -- IN;
+IL -- KY;
+IL -- MO;
+
+IN [style=filled fillcolor=yellow]
+IN -- MI;
+IN -- OH;
+IN -- KY;
+
+KS [style=filled fillcolor=green]
+KS -- NE;
+KS -- MO;
+KS -- OK;
+
+KY [style=filled fillcolor=green]
+KY -- OH;
+KY -- WV;
+KY -- VA;
+KY -- TN;
+KY -- MO;
+
+LA [style=filled fillcolor=red]
+LA -- MS;
+LA -- TX;
+
+MA [style=filled fillcolor=green]
+MA -- NH;
+MA -- RI;
+MA -- NY;
+MA -- VT;
+
+MD [style=filled fillcolor=blue]
+MD -- PA;
+MD -- VA;
+MD -- WV;
+
+ME [style=filled fillcolor=red]
+ME -- NH;
+
+MI [style=filled fillcolor=red]
+MI -- OH;
+MI -- WI;
+
+MN [style=filled fillcolor=blue]
+MN -- WI;
+MN -- SD;
+MN -- ND;
+
+MO [style=filled fillcolor=blue]
+MO -- TN;
+MO -- OK;
+MO -- NE;
+
+MS [style=filled fillcolor=blue]
+MS -- TN;
+
+MT [style=filled fillcolor=blue]
+MT -- ND;
+MT -- SD;
+MT -- WY;
+
+NC [style=filled fillcolor=blue]
+NC -- VA;
+NC -- SC;
+NC -- TN;
+
+ND [style=filled fillcolor=red]
+ND -- SD;
+
+NE [style=filled fillcolor=red]
+NE -- SD;
+NE -- WY;
+
+NH [style=filled fillcolor=blue]
+NH -- VT;
+
+NJ [style=filled fillcolor=red]
+NJ -- NY;
+NJ -- PA;
+
+NM [style=filled fillcolor=yellow]
+NM -- OK;
+NM -- TX;
+NM -- UT;
+
+NV [style=filled fillcolor=yellow]
+NV -- UT;
+NV -- OR;
+
+NY [style=filled fillcolor=blue]
+NY -- VT;
+NY -- PA;
+
+OH [style=filled fillcolor=blue]
+OH -- PA;
+OH -- WV;
+
+OK [style=filled fillcolor=red]
+OK -- TX;
+
+OR [style=filled fillcolor=blue]
+OR -- WA;
+
+PA [style=filled fillcolor=green]
+PA -- WV;
+
+RI [style=filled fillcolor=red]
+
+SC [style=filled fillcolor=red]
+
+SD [style=filled fillcolor=green]
+SD -- WY;
+
+TN [style=filled fillcolor=red]
+TN -- VA;
+
+TX [style=filled fillcolor=blue]
+
+UT [style=filled fillcolor=green]
+UT -- WY;
+
+VA [style=filled fillcolor=yellow]
+VA -- WV;
+
+VT [style=filled fillcolor=red]
+
+WA [style=filled fillcolor=green]
+
+WI [style=filled fillcolor=green]
+
+WV [style=filled fillcolor=red]
+
+WY [style=filled fillcolor=yellow]
+
+overlap=false; 
+splines=true;
+}

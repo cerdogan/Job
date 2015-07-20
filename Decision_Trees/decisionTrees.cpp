@@ -7,6 +7,7 @@
  */
 
 #include <assert.h>
+#include <iostream>
 #include <fstream>
 #include <math.h>
 #include <queue>
