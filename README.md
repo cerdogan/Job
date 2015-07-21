@@ -19,7 +19,7 @@ __Planning:__
  - __MDP - Policy iteration__
  - __Decision tree__
  - __Discrete constraint satisfaction (...)__
- - Min-max algorithm
+ - __Min-max algorithm__
  - Partial-order planning
  - GraphPlan
  - Rejection sampling

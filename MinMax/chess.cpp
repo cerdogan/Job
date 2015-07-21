@@ -6,7 +6,7 @@
  */
 
 #include <assert.h>
-#include <iostream>
+#include <fstream>
 #include <math.h>
 #include <queue>
 #include <set>
@@ -46,6 +46,7 @@ int evaluateBoard (const State& state, bool white) {
 		bool white = index >= 16;
 		if(white) index-=16;
 		int val = vals[index];
+    // printf("removed: %d, index: %d, val: %d\n", state.removed[i], index, val);
 		if(white) total -= val;
 		else total += val;
 	}
@@ -56,12 +57,12 @@ int evaluateBoard (const State& state, bool white) {
 }
 
 /* ******************************************************************************************** */
-void initBoard (State& state, bool default_ = true) {
+void initBoard (State& state, int default_ = 0) {
 
 	map <int, int>& positions = state.positions;
 
 	// Setup the default board
-	if(default_) {
+	if(default_ == 0) {
 
 		// Set the pawns
 		for(int i = 1; i < 9; i++) {
@@ -74,6 +75,26 @@ void initBoard (State& state, bool default_ = true) {
 			positions[i] = i - 9;
 			positions[i+16] = i + 8 * 6 - 1;
 		}
+	}
+
+	// Read the state from a file
+	else if(default_ == 1) {
+
+		// Set the board and position
+		fstream file ("state", fstream::in);
+		for(int i = 0; i < 64; i++) {
+			int x;
+			file >> x;
+      state.board[i/8][i%8] = x;
+      printf("%d ", x);
+			if(x != 0) state.positions[x] = i;
+		}
+    printf("\n");
+
+		// Determine missing pieces
+		for(int i = 1; i <= 32; i++) 
+			if(positions.find(i) == positions.end())
+				state.removed.push_back(i);
 	}
 
 	// Debugging purposes
@@ -147,9 +168,9 @@ void pawnMoves (const State& s, vector <pair <int,int> >& moves, bool white, int
 
 		// Check if it can make a double forward now that we know its forward is empty
 		if((px == 1 && white) || (px == 6 && !white)) {
-			new_vert += forw_offset;
-			if(s.board[new_vert][py] == 0) 
-				moves.push_back(make_pair(index, new_vert*8+py));
+			int new_vert2 = new_vert + forw_offset;
+			if(s.board[new_vert2][py] == 0) 
+				moves.push_back(make_pair(index, new_vert2*8+py));
 		}
 	}
 
@@ -249,13 +270,15 @@ void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 }
 
 /* ******************************************************************************************** */
-void makeMove (const State& s, const pair<int,int>& move, State& s2) {
+FILE* moveFile = NULL;
+void makeMove (const State& s, const pair<int,int>& move, State& s2, bool print = false) {
 
 	// Copy the data into new state
 	s2 = State(s);
 
 	// Make the changes to the position list for the mover (possibly attacker)
 	int currPos = s2.positions[move.first];
+	if(moveFile != NULL && print) fprintf(moveFile, "%d %d\n", currPos, move.second);
 	s2.board[currPos/8][currPos%8] = 0;
 	s2.positions[move.first] = move.second;
 
@@ -518,7 +541,8 @@ pair <int, int> processInput (State& s) {
 }
 
 /* ******************************************************************************************** */
-int main (int argc, char* argv[]) {
+/// Play with the normal command line interface or debug
+void normal () {
 
 	// Initialize the board
 	srand(time(NULL));
@@ -556,5 +580,36 @@ int main (int argc, char* argv[]) {
 		}
 		
 	}
+
+}
+
+/* ******************************************************************************************** */
+/// Play with the ui interface
+void python_ui () {
+
+	moveFile = fopen("command", "w+");
+
+	// Initialize the board
+	State state, state2;
+	initBoard(state, 1);
+	printBoard(state);
+
+	// Let compute make a min-max move
+	pair <int,int> bestMove;
+	numStates = 0;
+	minMax (&state, false, bestMove);
+	// printf("%d -> %d\n", bestMove.first, bestMove.second);
+	printf("#states examined: %d\n", numStates);
+	makeMove(state, bestMove, state2, true);
+	printBoard(state2);
+
+	fclose(moveFile);
+}
+
+/* ******************************************************************************************** */
+int main (int argc, char* argv[]) {
+
+	if(true || (argc > 1 && (strcmp(argv[1], "-ui") == 0))) python_ui();
+	else normal(); 
 }
 /* ******************************************************************************************** */
