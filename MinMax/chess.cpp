@@ -43,13 +43,15 @@ int evaluateBoard (const State& state, bool white) {
 	int vals [] = {1, 1, 1, 1, 1, 1, 1, 1, 5, 3, 3, 9, 1000, 3, 3, 5};
 	for(int i = 0; i < state.removed.size(); i++) {
 		int index = state.removed[i]-1;
-		if(index > 16) index-=16;
+		bool white = index >= 16;
+		if(white) index-=16;
 		int val = vals[index];
-		if(state.removed[i] < 17) total -= val;
+		if(white) total -= val;
 		else total += val;
 	}
 
-	if(!white) total *= -1;
+//	if(!white) 
+//	total *= -1;
 	return total;
 }
 
@@ -114,6 +116,7 @@ void printBoard (const State& state) {
 void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 	
 	// For each piece, generate the possibilities
+	// for(int i = 1; i < 17; i++) {
 	for(int i = 1; i < 17; i++) {
 
 		// Get the piece position if it exists
@@ -170,7 +173,6 @@ void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 
 		else if(((i == 9) || (i == 16)) || ((i == 11) || (i == 14)) || (i == 12) || (i == 13))	{ 
 
-
 			// Check if it can move in the four directions
 			vector <int> xs, ys;
 			int MAX_MOVE = 8;
@@ -187,8 +189,8 @@ void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 				xs = vector <int> (queen_xs, queen_xs + 8), ys = vector <int> (queen_ys, queen_ys + 8);
 			}
 			else if(i == 13) {
-				int queen_xs [] = {1, 1, -1, -1, 1, 0, -1, 0}, queen_ys [] = {-1, 1, 1, -1, 0, 1, 0, -1};
-				xs = vector <int> (queen_xs, queen_xs + 8), ys = vector <int> (queen_ys, queen_ys + 8);
+				int king_xs [] = {1, 1, -1, -1, 1, 0, -1, 0}, king_ys [] = {-1, 1, 1, -1, 0, 1, 0, -1};
+				xs = vector <int> (king_xs, king_xs + 8), ys = vector <int> (king_ys, king_ys + 8);
 				MAX_MOVE = 2;
 			}
 
@@ -242,25 +244,48 @@ void makeMove (const State& s, const pair<int,int>& move, State& s2) {
 }
 
 /* ******************************************************************************************** */
-int MAX_LEVEL = 4;
-int maxState (State* s, bool white, int level, pair <int,int>& bestMove);
-int minState (State* s, bool white, int level, pair <int,int>& bestMove);
+void printMove (const pair <int, int>& move) {
+	static const char* const KPIECES [16] = 
+		{"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "C1", "K1", "B1", "Q", "K", "B2", "K2", "C2"};
+	int index = move.first;
+	if(index > 16) index -= 16;
+	printf("%s: %s to (%d, %d)\n", move.first > 16 ? "Black" : "White", KPIECES[index-1], 
+		move.second/8, move.second%8);
+}
+
+/* ******************************************************************************************** */
+struct Result {
+	int val;
+	vector <pair <int,int> > moves;
+};
+
+/* ******************************************************************************************** */
+int MAX_LEVEL = 5;
+Result* maxState (State* s, bool white, int level);
+Result* minState (State* s, bool white, int level);
+
 void minMax (State* s, bool white, pair <int,int>& bestMove) {
-	maxState(s, white, 0, bestMove);
+	Result* res = maxState(s, white, 0);
+	bestMove = res->moves[res->moves.size()-1];
+	for(int i = 0; i < res->moves.size(); i++) {
+		printMove(res->moves[i]);
+	}
 }
 
 bool dbg = 0;
 /* ******************************************************************************************** */
-int maxState (State* s, bool white, int level, pair <int,int>& bestMove) {
+Result* maxState (State* s, bool white, int level) {
 
 	// If terminal state, evaluate it
 	if(level == MAX_LEVEL) {
 		int val = evaluateBoard (*s, white);
-//		if(dbg) printf("\tmax terminal: %d\n", val);
-		return val;
+		// if(dbg) printf("\tmax terminal: %d\n", val);
+		Result* res = new Result;
+		res->val = val;
+		return res;
 	}
 
-	if(dbg) printf("MAXIMUM STATE vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
+	if(dbg) printf("MAXIMUM STATE %d vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n", level);
 
 	// Get the possible states
 	vector <pair <int, int> > moves;
@@ -268,35 +293,49 @@ int maxState (State* s, bool white, int level, pair <int,int>& bestMove) {
 
 	// Find the state with the maximum value
 	int maxVal = -10000;
+	pair <int, int> bestMove;
+	Result* bestRes;
+	State* s2 = new State;
 	for(int i = 0; i < moves.size(); i++) {
 
 		// Create the state
-		State* s2 = new State;
 		makeMove(*s, moves[i], *s2);
+		if(level == 0 && moves[i].first == 20 && moves[i].second == 42) dbg = true;
+		else if((level == 0) && !(moves[i].first == 20 && moves[i].second == 42)) dbg = false;
 
 		// Get the value
 		pair <int, int> move;
-		int val = minState(s2, !white, level+1, move);
-		if(dbg) printf("\tmade call %d->%d: %d\n", moves[i].first, moves[i].second, val);
+		Result* res = minState(s2, !white, level+1);
+		if(dbg) printf("\tmade call %d->%d: %d\n", moves[i].first, moves[i].second, res->val);
 
 		// Otherwise, get the value of th
-		if(val > maxVal) {
-			maxVal = val;
+		if(res->val > maxVal) {
+			maxVal = res->val;
 			bestMove = moves[i];
+			bestRes = res;
 		}
+		else delete res;
 	}
 
 	if(dbg) printf("\n>> %d->%d: max val: %d\n", bestMove.first, bestMove.second, maxVal);
-	return maxVal;
+	bestRes->moves.push_back(bestMove);
+	if(dbg) printf("MAXIMUM STATE %d ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n", level);
+	delete s2;
+	return bestRes;
 }
 
 /* ******************************************************************************************** */
-int minState (State* s, bool white, int level, pair <int,int>& bestMove) {
+Result* minState (State* s, bool white, int level) {
 
-	if(dbg) printf("MINIMUM STATE vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
+	if(dbg) printf("MINIMUM STATE %d vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n", level);
 
 	// If terminal state, evaluate it
-	if(level == MAX_LEVEL) return evaluateBoard (*s, white);
+	if(level == MAX_LEVEL) {
+		int val = evaluateBoard (*s, white);
+		Result* res = new Result();
+		res->val = val;
+		return res;
+	}
 
 	// Get the possible states
 	vector <pair <int, int> > moves;
@@ -304,26 +343,36 @@ int minState (State* s, bool white, int level, pair <int,int>& bestMove) {
 
 	// Find the state with the maximum value
 	int minVal = 10000;
+	pair <int, int> bestMove;
+	Result* bestRes;
+	State* s2 = new State;
 	for(int i = 0; i < moves.size(); i++) {
 
 		// Create the state
-		State* s2 = new State;
 		makeMove(*s, moves[i], *s2);
 
 		// Get the value
 		pair <int, int> move;
-		int val = maxState(s2, !white, level+1, move);
-		if(dbg) printf("%d->%d: %d | ", moves[i].first, moves[i].second, val);
+		Result* res = maxState(s2, !white, level+1);
+		if(dbg) {printf("%d->%d: %d | ", moves[i].first, moves[i].second, res->val); fflush(stdout); }
 
 		// Otherwise, get the value of th
-		if(val < minVal) {
-			minVal = val;
+		if(res->val < minVal) {
+			minVal = res->val;
 			bestMove = moves[i];
+			bestRes = res;
 		}
+		else delete res;
 	}
 
 	if(dbg) printf("\n>> %d->%d: min val: %d\n", bestMove.first, bestMove.second, minVal);
-	return minVal;
+	bestRes->moves.push_back(bestMove);
+	for(int i = 0; i < bestRes->moves.size(); i++) {
+		if(dbg) printMove(bestRes->moves[i]);
+	}
+	if(dbg) printf("MINIMUM STATE %d ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n", level);
+	delete s2;
+	return bestRes;
 }
 
 /* ******************************************************************************************** */
@@ -334,6 +383,11 @@ int main (int argc, char* argv[]) {
 	State state, state2;
 	initBoard(state);
 	printBoard(state);
+//	makeMove(state, make_pair(5, 44), state2);
+//	printBoard(state2);
+//	makeMove(state2, make_pair(22, 44), state);
+//	printBoard(state);
+//	return 1;
 
 	while(true) {
 
