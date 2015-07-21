@@ -21,7 +21,7 @@ using namespace std;
 /* ******************************************************************************************** */
 enum Pieces {
 	P1 = 1, P2, P3, P4, P5, P6, P7, P8,
-	C1, K1, B1, Q, K, B2, K2, C2
+	C1, K1, B1, Q, W, B2, K2, C2
 };
 
 struct State {
@@ -98,7 +98,7 @@ void printBoard (const State& state) {
 	static const char KRED [] = "\x1B[31m";	
 	static const char KBLU [] = "\x1B[34m";	
 	static const char* const KPIECES [16] = 
-		{"P", "P", "P", "P", "P", "P", "P", "P", "C", "K", "B", "Q", "K", "B", "K", "C"};
+		{"P", "P", "P", "P", "P", "P", "P", "P", "C", "K", "B", "Q", "W", "B", "K", "C"};
 	
 	// Print the information
 	for(int i = 7; i >= 0; i--) {
@@ -113,6 +113,123 @@ void printBoard (const State& state) {
 }
 
 /* ******************************************************************************************** */
+void knightMoves (const State& s, vector <pair <int,int> >& moves, bool white, int px, int py,
+		int index) {
+
+	// Generate the 8 moves and check availability
+	static const int knight_xs [] = {1, 2, 2, 1, -1, -2, -2, -1};
+	static const int knight_ys [] = {-2, -1, 1, 2, 2, 1, -1, -2};
+	for(int move_idx = 0; move_idx < 8; move_idx++) {
+		
+		// Check if out of bounds
+		int new_px = px + knight_xs[move_idx], new_py = py + knight_ys[move_idx];
+		if((new_px < 0) || (new_px > 7) || (new_py < 0) || (new_py > 7)) continue;
+		
+		// Check if in collision with own side
+		bool ownCollide = (!white && (s.board[new_px][new_py] > 16)) ||
+			(white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
+		if(ownCollide) continue;
+		
+		// Add to the moves
+		moves.push_back(make_pair(index, new_px*8+new_py));
+	}
+}
+
+/* ******************************************************************************************** */
+void pawnMoves (const State& s, vector <pair <int,int> >& moves, bool white, int px, int py, 
+		int index) {
+
+	// Check if it can move forward if white
+	int forw_offset = white ? 1 : -1, new_vert = px + forw_offset;
+	if(((new_vert >= 0) && (new_vert < 8)) && (s.board[new_vert][py] == 0)) {
+
+		moves.push_back(make_pair(index, new_vert*8+py));
+
+		// Check if it can make a double forward now that we know its forward is empty
+		if((px == 1 && white) || (px == 6 && !white)) {
+			new_vert += forw_offset;
+			if(s.board[new_vert][py] == 0) 
+				moves.push_back(make_pair(index, new_vert*8+py));
+		}
+	}
+
+	// Check if it can attack an adversary to the s.board left
+	if((new_vert >= 0) && (new_vert < 8) && (py > 0)) {
+		bool opponent = (white && (s.board[new_vert][py-1] > 16)) ||
+			(!white && ((s.board[new_vert][py-1] != 0) && (s.board[new_vert][py-1] < 17)));
+		if(opponent) moves.push_back(make_pair(index, new_vert*8+py-1));
+	}
+
+	// Check if it can attack an adversary to the s.board right
+	if((new_vert >= 0) && (new_vert < 8) && (py < 7)) {
+		bool opponent = (white && (s.board[new_vert][py+1] > 16)) ||
+			(!white && ((s.board[new_vert][py+1] != 0) && (s.board[new_vert][py+1] < 17)));
+		if(opponent) moves.push_back(make_pair(index, new_vert*8+py+1));
+	}
+}
+
+/* ******************************************************************************************** */
+void otherMoves (const State& s, vector <pair <int,int> >& moves, bool white, int px, int py, 
+		int index, int i) {
+
+	// Check if it can move in the four directions
+	vector <int> xs, ys;
+	int MAX_MOVE = 8;
+	if((i == 9) || (i == 16)) {
+		int castle_xs [] = {1, 0, -1, 0}, castle_ys [] = {0, 1, 0, -1};
+		xs = vector <int> (castle_xs, castle_xs + 4), ys = vector <int> (castle_ys, castle_ys + 4);
+	}
+	else if((i == 11) || (i == 14)) {
+		int bishop_xs [] = {1, 1, -1, -1}, bishop_ys [] = {-1, 1, 1, -1};
+		xs = vector <int> (bishop_xs, bishop_xs + 4), ys = vector <int> (bishop_ys, bishop_ys + 4);
+	}
+	else if(i == 12) {
+		int queen_xs [] = {1, 1, -1, -1, 1, 0, -1, 0}, queen_ys [] = {-1, 1, 1, -1, 0, 1, 0, -1};
+		xs = vector <int> (queen_xs, queen_xs + 8), ys = vector <int> (queen_ys, queen_ys + 8);
+	}
+	else if(i == 13) {
+		int king_xs [] = {1, 1, -1, -1, 1, 0, -1, 0}, king_ys [] = {-1, 1, 1, -1, 0, 1, 0, -1};
+		xs = vector <int> (king_xs, king_xs + 8), ys = vector <int> (king_ys, king_ys + 8);
+		MAX_MOVE = 2;
+	}
+
+	for(int angle_idx = 0; angle_idx < xs.size(); angle_idx++) {
+		for(int move_idx = 1; move_idx < MAX_MOVE; move_idx++) {
+
+			// Get the new location
+			int new_px = px + move_idx * xs[angle_idx];
+			int new_py = py + move_idx * ys[angle_idx];
+
+			// Check if it is out of bounds
+			if((new_px < 0) || (new_px > 7) || (new_py < 0) || (new_py > 7)) break;
+
+			// Check collisions
+			bool ownCollide = (!white && (s.board[new_px][new_py] > 16)) ||
+				(white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
+			bool theirCollide = (white && (s.board[new_px][new_py] > 16)) ||
+				(!white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
+
+			// If collision with own, stop. If not, add and then stop.
+			if(ownCollide) break;
+			else {
+				moves.push_back(make_pair(index, new_px*8+new_py));
+				if(theirCollide) break;
+			}
+		}
+	}
+}
+
+/* ******************************************************************************************** */
+bool getPieceLocation (const State& s, int index, bool white, int& px, int& py) {
+	int positionBad;
+	map <int, int>::const_iterator it = s.positions.find(index);
+	if(it == s.positions.end()) return false;
+	else positionBad = it->second;
+	px = positionBad / 8, py = positionBad % 8;
+	return true;
+}
+
+/* ******************************************************************************************** */
 void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 	
 	// For each piece, generate the possibilities
@@ -120,105 +237,14 @@ void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 	for(int i = 1; i < 17; i++) {
 
 		// Get the piece position if it exists
-		int index = i + (white ? 0 : 16);
-		int positionBad;
-		map <int, int>::const_iterator it = s.positions.find(index);
-		if(it == s.positions.end()) continue;
-		else positionBad = it->second;
-		int px = positionBad / 8, py = positionBad % 8;
-		
-		// Create the position based on the piece
-		if(i < 9) {		// Pawn
-	
-			// Check if it can move forward if white
-			int forw_offset = white ? 1 : -1, new_vert = px + forw_offset;
-			if(((new_vert >= 0) && (new_vert < 8)) && (s.board[new_vert][py] == 0)) 
-				moves.push_back(make_pair(index, new_vert*8+py));
+		int index = i + (white ? 0 : 16), px, py;
+		if(!getPieceLocation(s, index, white, px, py)) continue;
 
-			// Check if it can attack an adversary to the s.board left
-			if((new_vert >= 0) && (new_vert < 8) && (py > 0)) {
-				bool opponent = (white && (s.board[new_vert][py-1] > 16)) ||
-					(!white && ((s.board[new_vert][py-1] != 0) && (s.board[new_vert][py-1] < 17)));
-				if(opponent) moves.push_back(make_pair(index, new_vert*8+py-1));
-			}
-
-			// Check if it can attack an adversary to the s.board right
-			if((new_vert >= 0) && (new_vert < 8) && (py < 7)) {
-				bool opponent = (white && (s.board[new_vert][py+1] > 16)) ||
-					(!white && ((s.board[new_vert][py+1] != 0) && (s.board[new_vert][py+1] < 17)));
-				if(opponent) moves.push_back(make_pair(index, new_vert*8+py+1));
-			}
-		}
-
-		else if((i == 10) || (i == 15)) {	// Knight 
-
-			// Generate the 8 moves and check availability
-			static const int knight_xs [] = {1, 2, 2, 1, -1, -2, -2, -1};
-			static const int knight_ys [] = {-2, -1, 1, 2, 2, 1, -1, -2};
-			for(int move_idx = 0; move_idx < 8; move_idx++) {
-				
-				// Check if out of bounds
-				int new_px = px + knight_xs[move_idx], new_py = py + knight_ys[move_idx];
-				if((new_px < 0) || (new_px > 7) || (new_py < 0) || (new_py > 7)) continue;
-				
-				// Check if in collision with own side
-				bool ownCollide = (!white && (s.board[new_px][new_py] > 16)) ||
-					(white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
-				if(ownCollide) continue;
-				
-				// Add to the moves
-				moves.push_back(make_pair(index, new_px*8+new_py));
-			}
-		}
-
-		else if(((i == 9) || (i == 16)) || ((i == 11) || (i == 14)) || (i == 12) || (i == 13))	{ 
-
-			// Check if it can move in the four directions
-			vector <int> xs, ys;
-			int MAX_MOVE = 8;
-			if((i == 9) || (i == 16)) {
-				int castle_xs [] = {1, 0, -1, 0}, castle_ys [] = {0, 1, 0, -1};
-				xs = vector <int> (castle_xs, castle_xs + 4), ys = vector <int> (castle_ys, castle_ys + 4);
-			}
-			else if((i == 11) || (i == 14)) {
-				int bishop_xs [] = {1, 1, -1, -1}, bishop_ys [] = {-1, 1, 1, -1};
-				xs = vector <int> (bishop_xs, bishop_xs + 4), ys = vector <int> (bishop_ys, bishop_ys + 4);
-			}
-			else if(i == 12) {
-				int queen_xs [] = {1, 1, -1, -1, 1, 0, -1, 0}, queen_ys [] = {-1, 1, 1, -1, 0, 1, 0, -1};
-				xs = vector <int> (queen_xs, queen_xs + 8), ys = vector <int> (queen_ys, queen_ys + 8);
-			}
-			else if(i == 13) {
-				int king_xs [] = {1, 1, -1, -1, 1, 0, -1, 0}, king_ys [] = {-1, 1, 1, -1, 0, 1, 0, -1};
-				xs = vector <int> (king_xs, king_xs + 8), ys = vector <int> (king_ys, king_ys + 8);
-				MAX_MOVE = 2;
-			}
-
-			for(int angle_idx = 0; angle_idx < xs.size(); angle_idx++) {
-				for(int move_idx = 1; move_idx < MAX_MOVE; move_idx++) {
-
-					// Get the new location
-					int new_px = px + move_idx * xs[angle_idx];
-					int new_py = py + move_idx * ys[angle_idx];
-
-					// Check if it is out of bounds
-					if((new_px < 0) || (new_px > 7) || (new_py < 0) || (new_py > 7)) break;
-
-					// Check collisions
-					bool ownCollide = (!white && (s.board[new_px][new_py] > 16)) ||
-						(white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
-					bool theirCollide = (white && (s.board[new_px][new_py] > 16)) ||
-						(!white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
-
-					// If collision with own, stop. If not, add and then stop.
-					if(ownCollide) break;
-					else {
-						moves.push_back(make_pair(index, new_px*8+new_py));
-						if(theirCollide) break;
-					}
-				}
-			}
-		}
+				// Create the position based on the piece
+		if(i < 9) pawnMoves(s, moves, white, px, py, index);
+		else if((i == 10) || (i == 15)) knightMoves(s, moves, white, px, py, index);
+		else if(((i == 9) || (i == 16)) || ((i == 11) || (i == 14)) || (i == 12) || (i == 13))	
+			otherMoves(s, moves, white, px, py, index, i);
 	}
 }
 
@@ -246,7 +272,7 @@ void makeMove (const State& s, const pair<int,int>& move, State& s2) {
 /* ******************************************************************************************** */
 void printMove (const pair <int, int>& move) {
 	static const char* const KPIECES [16] = 
-		{"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "C1", "K1", "B1", "Q", "K", "B2", "K2", "C2"};
+		{"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "C1", "K1", "B1", "Q", "W", "B2", "K2", "C2"};
 	int index = move.first;
 	if(index > 16) index -= 16;
 	printf("%s: %s to (%d, %d)\n", move.first > 16 ? "Black" : "White", KPIECES[index-1], 
@@ -261,11 +287,12 @@ struct Result {
 
 /* ******************************************************************************************** */
 int MAX_LEVEL = 5;
-Result* maxState (State* s, bool white, int level);
-Result* minState (State* s, bool white, int level);
+Result* maxState (State* s, bool white, int level, int alpha, int beta);
+Result* minState (State* s, bool white, int level, int alpha, int beta);
+int numStates = 0;
 
 void minMax (State* s, bool white, pair <int,int>& bestMove) {
-	Result* res = maxState(s, white, 0);
+	Result* res = maxState(s, white, 0, -100000, 100000);
 	bestMove = res->moves[res->moves.size()-1];
 	for(int i = 0; i < res->moves.size(); i++) {
 		printMove(res->moves[i]);
@@ -274,8 +301,9 @@ void minMax (State* s, bool white, pair <int,int>& bestMove) {
 
 bool dbg = 0;
 /* ******************************************************************************************** */
-Result* maxState (State* s, bool white, int level) {
+Result* maxState (State* s, bool white, int level, int alpha, int beta) {
 
+	numStates++;
 	// If terminal state, evaluate it
 	if(level == MAX_LEVEL) {
 		int val = evaluateBoard (*s, white);
@@ -305,7 +333,7 @@ Result* maxState (State* s, bool white, int level) {
 
 		// Get the value
 		pair <int, int> move;
-		Result* res = minState(s2, !white, level+1);
+		Result* res = minState(s2, !white, level+1, alpha, beta);
 		if(dbg) printf("\tmade call %d->%d: %d\n", moves[i].first, moves[i].second, res->val);
 
 		// Otherwise, get the value of th
@@ -313,6 +341,12 @@ Result* maxState (State* s, bool white, int level) {
 			maxVal = res->val;
 			bestMove = moves[i];
 			bestRes = res;
+
+			// Cut short if necessary
+			if(maxVal >= beta) return bestRes;
+
+			// Update alpha
+			alpha = max(alpha, maxVal);
 		}
 		else delete res;
 	}
@@ -325,10 +359,11 @@ Result* maxState (State* s, bool white, int level) {
 }
 
 /* ******************************************************************************************** */
-Result* minState (State* s, bool white, int level) {
+Result* minState (State* s, bool white, int level, int alpha, int beta) {
 
 	if(dbg) printf("MINIMUM STATE %d vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n", level);
 
+	numStates++;
 	// If terminal state, evaluate it
 	if(level == MAX_LEVEL) {
 		int val = evaluateBoard (*s, white);
@@ -353,7 +388,7 @@ Result* minState (State* s, bool white, int level) {
 
 		// Get the value
 		pair <int, int> move;
-		Result* res = maxState(s2, !white, level+1);
+		Result* res = maxState(s2, !white, level+1, alpha, beta);
 		if(dbg) {printf("%d->%d: %d | ", moves[i].first, moves[i].second, res->val); fflush(stdout); }
 
 		// Otherwise, get the value of th
@@ -361,6 +396,12 @@ Result* minState (State* s, bool white, int level) {
 			minVal = res->val;
 			bestMove = moves[i];
 			bestRes = res;
+
+			// Cut short if necessary
+			if(minVal <= alpha) return bestRes;
+
+			// Update alpha
+			beta = min(beta, minVal);
 		}
 		else delete res;
 	}
@@ -376,6 +417,107 @@ Result* minState (State* s, bool white, int level) {
 }
 
 /* ******************************************************************************************** */
+pair <int, int> processInput (State& s) {
+
+	// Get user input
+	char line[256];
+	char* p = gets (line);  /* Uh-oh. Don't panic. See below. */
+	bool shortP = strlen(p) < 3;
+
+	// Determine the next position
+	int nextPos;
+	if(shortP) nextPos = (p[0] - 'a') + (p[1]-'1') * 8;
+	else nextPos = (p[1] - 'a') + (p[2]-'1') * 8;
+	printf("nextPos: %d\n", nextPos);
+
+	// Get the piece
+	int i = -1;
+	if(!shortP) {
+		switch(p[0]) {
+			case 'P': i = 1; break;
+			case 'C': i = 9; break;
+			case 'K': i = 10; break;
+			case 'B': i = 11; break;
+			case 'Q': i = 12; break;
+			case 'W': i = 13; break;
+		}
+	}
+	else i = 1;
+	assert(i != -1 && "Unknown piece");
+
+	printf("i: %d\n", i);
+	
+	// For multiple options, choose one of the pieces
+	vector <pair <int,int> > moves;
+	int rookIdx [] = {9,16}, knightIdx [] = {10, 15}, bishopIdx [] = {11,14};
+	int px, py;
+	if(i < 9) {		// For pawns
+		for(int i = 1; i < 9; i++) {
+			moves.clear();
+			if(!getPieceLocation(s, i, true, px, py)) continue;
+			pawnMoves (s, moves, true, px, py, i);
+			for(int j = 0; j < moves.size(); j++) {
+				if(moves[j].second == nextPos) 
+					return make_pair(i, nextPos);
+			}
+		}
+	}
+	else if((i == 9) || (i == 16)) {		// For rooks
+		for(int i = 0; i < 2; i++) {
+			moves.clear();
+			if(!getPieceLocation(s, rookIdx[i], true, px, py)) continue;
+			otherMoves (s, moves, true, px, py, rookIdx[i], rookIdx[i]);
+			for(int j = 0; j < moves.size(); j++) 
+				if(moves[j].second == nextPos) 
+					return make_pair(rookIdx[i], nextPos);
+		}
+	}
+	else if((i == 11) || (i == 14)) {		// For bishops
+		for(int i = 0; i < 2; i++) {
+			moves.clear();
+			if(!getPieceLocation(s, bishopIdx[i], true, px, py)) continue;
+			otherMoves (s, moves, true, px, py, bishopIdx[i], bishopIdx[i]);
+			for(int j = 0; j < moves.size(); j++) 
+				if(moves[j].second == nextPos) 
+					return make_pair(bishopIdx[i], nextPos);
+		}
+	}
+	else if((i == 10) || (i == 15)) {		// For knights
+		for(int i = 0; i < 2; i++) {
+			moves.clear();
+			if(!getPieceLocation(s, knightIdx[i], true, px, py)) continue;
+			knightMoves (s, moves, true, px, py, knightIdx[i]);
+			for(int j = 0; j < moves.size(); j++) {
+				// printf("i: %d, j: %d/%d, move to: (%d, %d) [%d]\n", i, j, moves.size(), moves[j].second/8, moves[j].second%8, moves[j].second);
+				if(moves[j].second == nextPos) 
+					return make_pair(knightIdx[i], nextPos);
+			}
+		}
+	}
+	else if(i == 12) {
+		if(!getPieceLocation(s, 12, true, px, py)) {
+			printf("Impossible move. Try again.\n");
+			return processInput(s);
+		}
+		otherMoves (s, moves, true, px, py, 12, 12);
+		for(int j = 0; j < moves.size(); j++) 
+			if(moves[j].second == nextPos) 
+				return make_pair(12, nextPos);
+	}
+	else if(i == 13) {
+		assert(getPieceLocation(s, 13, true, px, py));
+		otherMoves (s, moves, true, px, py, 13, 13);
+		for(int j = 0; j < moves.size(); j++) 
+			if(moves[j].second == nextPos) 
+				return make_pair(13, nextPos);
+	}
+
+
+	printf("Impossible move. Try again.\n");
+	return processInput(s);
+}
+
+/* ******************************************************************************************** */
 int main (int argc, char* argv[]) {
 
 	// Initialize the board
@@ -383,32 +525,23 @@ int main (int argc, char* argv[]) {
 	State state, state2;
 	initBoard(state);
 	printBoard(state);
-//	makeMove(state, make_pair(5, 44), state2);
-//	printBoard(state2);
-//	makeMove(state2, make_pair(22, 44), state);
-//	printBoard(state);
-//	return 1;
 
 	while(true) {
 
 		// Get user input
-		char line[256];
-		char* p = gets (line);  /* Uh-oh. Don't panic. See below. */
-		int prevPos = (p[0] - 'a') + (p[1]-'1') * 8;
-		int nextPos = (p[2] - 'a') + (p[3]-'1') * 8;
-		int piece = state.board[(p[1]-'1')][p[0]-'a'];
-		printf("'%s': %d: %d -> %d\n", p, piece, prevPos, nextPos);
+		pair <int, int> move = processInput(state);
 
 		// Make the user move
-		pair <int, int> move = make_pair(piece, nextPos);
 		makeMove(state, move, state2);
 		printBoard(state2);
 
 		// Let compute make a min-max move
 		if(true) {
 			pair <int,int> bestMove;
+			numStates = 0;
 			minMax (&state2, false, bestMove);
-			printf("%d -> %d\n", bestMove.first, bestMove.second);
+			// printf("%d -> %d\n", bestMove.first, bestMove.second);
+			printf("#states examined: %d\n", numStates);
 			makeMove(state2, bestMove, state);
 			printBoard(state);
 		}
