@@ -24,11 +24,39 @@ enum Pieces {
 	C1, K1, B1, Q, K, B2, K2, C2
 };
 
-map <int, int> positions;
-int board [8][8];
+struct State {
+	map <int, int> positions;
+	int board [8][8];
+	vector <int> removed;
+	State () {}
+	State (const State& s) {
+		positions = s.positions;
+		removed = s.removed;
+		memcpy(board, s.board, sizeof(s.board));
+	}
+};
 
 /* ******************************************************************************************** */
-void initBoard (bool default_ = true) {
+int evaluateBoard (const State& state, bool white) {
+
+	int total = 0;
+	int vals [] = {1, 1, 1, 1, 1, 1, 1, 1, 5, 3, 3, 9, 1000, 3, 3, 5};
+	for(int i = 0; i < state.removed.size(); i++) {
+		int index = state.removed[i]-1;
+		if(index > 16) index-=16;
+		int val = vals[index];
+		if(state.removed[i] < 17) total -= val;
+		else total += val;
+	}
+
+	if(!white) total *= -1;
+	return total;
+}
+
+/* ******************************************************************************************** */
+void initBoard (State& state, bool default_ = true) {
+
+	map <int, int>& positions = state.positions;
 
 	// Setup the default board
 	if(default_) {
@@ -56,33 +84,34 @@ void initBoard (bool default_ = true) {
 	}
 
 	// Fill in the board representation
-	memset(board, 0, sizeof(board));
+	memset(state.board, 0, sizeof(state.board));
 	map <int, int>::iterator it = positions.begin();
-	for(; it != positions.end(); it++) board[it->second/8][it->second%8] = it->first;
+	for(; it != positions.end(); it++) state.board[it->second/8][it->second%8] = it->first;
 }
 
 /* ******************************************************************************************** */
-void printBoard () {
+void printBoard (const State& state) {
 
 	static const char KNRM [] = "\x1B[0m";	
 	static const char KRED [] = "\x1B[31m";	
 	static const char KBLU [] = "\x1B[34m";	
-	static const char* const KPIECES [17] = 
+	static const char* const KPIECES [16] = 
 		{"P", "P", "P", "P", "P", "P", "P", "P", "C", "K", "B", "Q", "K", "B", "K", "C"};
 	
 	// Print the information
 	for(int i = 7; i >= 0; i--) {
 		for(int j = 0; j < 8; j++) {
-			if(board[i][j] == 0) printf("- ");
-			else if(board[i][j] < 17) printf("%s%s%s ", KRED, KPIECES[board[i][j]-1], KNRM);
-			else printf("%s%s%s ", KBLU, KPIECES[board[i][j]-17], KNRM);
+			if(state.board[i][j] == 0) printf("- ");
+			else if(state.board[i][j] < 17) printf("%s%s%s ", KRED, KPIECES[state.board[i][j]-1], KNRM);
+			else printf("%s%s%s ", KBLU, KPIECES[state.board[i][j]-17], KNRM);
 		}
 		printf("\n");
 	}
+	printf("Value: %d =================================\n", evaluateBoard(state, 1));
 }
 
 /* ******************************************************************************************** */
-void createMoves (vector <pair <int,int> >& moves, bool white) {
+void createMoves (const State& s, vector <pair <int,int> >& moves, bool white) {
 	
 	// For each piece, generate the possibilities
 	for(int i = 1; i < 17; i++) {
@@ -90,8 +119,8 @@ void createMoves (vector <pair <int,int> >& moves, bool white) {
 		// Get the piece position if it exists
 		int index = i + (white ? 0 : 16);
 		int positionBad;
-		map <int, int>::iterator it = positions.find(index);
-		if(it == positions.end()) continue;
+		map <int, int>::const_iterator it = s.positions.find(index);
+		if(it == s.positions.end()) continue;
 		else positionBad = it->second;
 		int px = positionBad / 8, py = positionBad % 8;
 		
@@ -100,19 +129,20 @@ void createMoves (vector <pair <int,int> >& moves, bool white) {
 	
 			// Check if it can move forward if white
 			int forw_offset = white ? 1 : -1, new_vert = px + forw_offset;
-			if(((new_vert >= 0) && (new_vert < 8)) && (board[new_vert][py] == 0)) moves.push_back(make_pair(index, new_vert*8+py));
+			if(((new_vert >= 0) && (new_vert < 8)) && (s.board[new_vert][py] == 0)) 
+				moves.push_back(make_pair(index, new_vert*8+py));
 
-			// Check if it can attack an adversary to the board left
+			// Check if it can attack an adversary to the s.board left
 			if((new_vert >= 0) && (new_vert < 8) && (py > 0)) {
-				bool opponent = (white && (board[new_vert][py-1] > 16)) ||
-					(!white && ((board[new_vert][py-1] != 0) && (board[new_vert][py-1] < 17)));
+				bool opponent = (white && (s.board[new_vert][py-1] > 16)) ||
+					(!white && ((s.board[new_vert][py-1] != 0) && (s.board[new_vert][py-1] < 17)));
 				if(opponent) moves.push_back(make_pair(index, new_vert*8+py-1));
 			}
 
-			// Check if it can attack an adversary to the board right
+			// Check if it can attack an adversary to the s.board right
 			if((new_vert >= 0) && (new_vert < 8) && (py < 7)) {
-				bool opponent = (white && (board[new_vert][py+1] > 16)) ||
-					(!white && ((board[new_vert][py+1] != 0) && (board[new_vert][py+1] < 17)));
+				bool opponent = (white && (s.board[new_vert][py+1] > 16)) ||
+					(!white && ((s.board[new_vert][py+1] != 0) && (s.board[new_vert][py+1] < 17)));
 				if(opponent) moves.push_back(make_pair(index, new_vert*8+py+1));
 			}
 		}
@@ -129,8 +159,8 @@ void createMoves (vector <pair <int,int> >& moves, bool white) {
 				if((new_px < 0) || (new_px > 7) || (new_py < 0) || (new_py > 7)) continue;
 				
 				// Check if in collision with own side
-				bool ownCollide = (!white && (board[new_px][new_py] > 16)) ||
-					(white && ((board[new_px][new_py] != 0) && (board[new_px][new_py] < 17)));
+				bool ownCollide = (!white && (s.board[new_px][new_py] > 16)) ||
+					(white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
 				if(ownCollide) continue;
 				
 				// Add to the moves
@@ -173,10 +203,10 @@ void createMoves (vector <pair <int,int> >& moves, bool white) {
 					if((new_px < 0) || (new_px > 7) || (new_py < 0) || (new_py > 7)) break;
 
 					// Check collisions
-					bool ownCollide = (!white && (board[new_px][new_py] > 16)) ||
-						(white && ((board[new_px][new_py] != 0) && (board[new_px][new_py] < 17)));
-					bool theirCollide = (white && (board[new_px][new_py] > 16)) ||
-						(!white && ((board[new_px][new_py] != 0) && (board[new_px][new_py] < 17)));
+					bool ownCollide = (!white && (s.board[new_px][new_py] > 16)) ||
+						(white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
+					bool theirCollide = (white && (s.board[new_px][new_py] > 16)) ||
+						(!white && ((s.board[new_px][new_py] != 0) && (s.board[new_px][new_py] < 17)));
 
 					// If collision with own, stop. If not, add and then stop.
 					if(ownCollide) break;
@@ -191,35 +221,119 @@ void createMoves (vector <pair <int,int> >& moves, bool white) {
 }
 
 /* ******************************************************************************************** */
-void makeMove (const pair<int,int>& move) {
+void makeMove (const State& s, const pair<int,int>& move, State& s2) {
+
+	// Copy the data into new state
+	s2 = State(s);
 
 	// Make the changes to the position list for the mover (possibly attacker)
-	int currPos = positions[move.first];
-	board[currPos/8][currPos%8] = 0;
-	positions[move.first] = move.second;
+	int currPos = s2.positions[move.first];
+	s2.board[currPos/8][currPos%8] = 0;
+	s2.positions[move.first] = move.second;
 
 	// Check if there is a defender
-	if(board[move.second/8][move.second%8] != 0) {
-		positions.erase(board[move.second/8][move.second%8]);
+	if(s2.board[move.second/8][move.second%8] != 0) {
+		s2.positions.erase(s2.board[move.second/8][move.second%8]);
+		s2.removed.push_back(s2.board[move.second/8][move.second%8]);
 	}
 	
 	// Update the move on the board
-	board[move.second/8][move.second%8] = move.first;
-	printf("#positions: %lu\n", positions.size());
+	s2.board[move.second/8][move.second%8] = move.first;
+}
+
+/* ******************************************************************************************** */
+int MAX_LEVEL = 4;
+int maxState (State* s, bool white, int level, pair <int,int>& bestMove);
+int minState (State* s, bool white, int level, pair <int,int>& bestMove);
+void minMax (State* s, bool white, pair <int,int>& bestMove) {
+	maxState(s, white, 0, bestMove);
+}
+
+bool dbg = 0;
+/* ******************************************************************************************** */
+int maxState (State* s, bool white, int level, pair <int,int>& bestMove) {
+
+	// If terminal state, evaluate it
+	if(level == MAX_LEVEL) {
+		int val = evaluateBoard (*s, white);
+//		if(dbg) printf("\tmax terminal: %d\n", val);
+		return val;
+	}
+
+	if(dbg) printf("MAXIMUM STATE vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
+
+	// Get the possible states
+	vector <pair <int, int> > moves;
+	createMoves(*s, moves, white);
+
+	// Find the state with the maximum value
+	int maxVal = -10000;
+	for(int i = 0; i < moves.size(); i++) {
+
+		// Create the state
+		State* s2 = new State;
+		makeMove(*s, moves[i], *s2);
+
+		// Get the value
+		pair <int, int> move;
+		int val = minState(s2, !white, level+1, move);
+		if(dbg) printf("\tmade call %d->%d: %d\n", moves[i].first, moves[i].second, val);
+
+		// Otherwise, get the value of th
+		if(val > maxVal) {
+			maxVal = val;
+			bestMove = moves[i];
+		}
+	}
+
+	if(dbg) printf("\n>> %d->%d: max val: %d\n", bestMove.first, bestMove.second, maxVal);
+	return maxVal;
+}
+
+/* ******************************************************************************************** */
+int minState (State* s, bool white, int level, pair <int,int>& bestMove) {
+
+	if(dbg) printf("MINIMUM STATE vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv\n");
+
+	// If terminal state, evaluate it
+	if(level == MAX_LEVEL) return evaluateBoard (*s, white);
+
+	// Get the possible states
+	vector <pair <int, int> > moves;
+	createMoves(*s, moves, white);
+
+	// Find the state with the maximum value
+	int minVal = 10000;
+	for(int i = 0; i < moves.size(); i++) {
+
+		// Create the state
+		State* s2 = new State;
+		makeMove(*s, moves[i], *s2);
+
+		// Get the value
+		pair <int, int> move;
+		int val = maxState(s2, !white, level+1, move);
+		if(dbg) printf("%d->%d: %d | ", moves[i].first, moves[i].second, val);
+
+		// Otherwise, get the value of th
+		if(val < minVal) {
+			minVal = val;
+			bestMove = moves[i];
+		}
+	}
+
+	if(dbg) printf("\n>> %d->%d: min val: %d\n", bestMove.first, bestMove.second, minVal);
+	return minVal;
 }
 
 /* ******************************************************************************************** */
 int main (int argc, char* argv[]) {
 
+	// Initialize the board
 	srand(time(NULL));
-	initBoard();
-	printBoard();
-	vector <pair <int, int> > moves;
-	createMoves(moves, 1);
-	printf("#moves: %lu\n", moves.size());
-	for(int i = 0; i < moves.size(); i++) printf("(%d, %d)\n", moves[i].first, moves[i].second);
-	//makeMove(moves[1]);
-	printBoard();
+	State state, state2;
+	initBoard(state);
+	printBoard(state);
 
 	while(true) {
 
@@ -228,22 +342,32 @@ int main (int argc, char* argv[]) {
 		char* p = gets (line);  /* Uh-oh. Don't panic. See below. */
 		int prevPos = (p[0] - 'a') + (p[1]-'1') * 8;
 		int nextPos = (p[2] - 'a') + (p[3]-'1') * 8;
-		int piece = board[(p[1]-'1')][p[0]-'a'];
+		int piece = state.board[(p[1]-'1')][p[0]-'a'];
 		printf("'%s': %d: %d -> %d\n", p, piece, prevPos, nextPos);
 
 		// Make the user move
 		pair <int, int> move = make_pair(piece, nextPos);
-		makeMove(move);
-		printBoard();
-		printf("===========================================\n");
+		makeMove(state, move, state2);
+		printBoard(state2);
+
+		// Let compute make a min-max move
+		if(true) {
+			pair <int,int> bestMove;
+			minMax (&state2, false, bestMove);
+			printf("%d -> %d\n", bestMove.first, bestMove.second);
+			makeMove(state2, bestMove, state);
+			printBoard(state);
+		}
 
 		// Let computer make a random move
-		vector <pair <int, int> > moves;
-		createMoves(moves, 0);
-		int random = rand() % moves.size();
-		makeMove(moves[random]);
-		printBoard();
-		printf("===========================================\n");
+		else {
+			vector <pair <int, int> > moves;
+			createMoves(state2, moves, 0);
+			int random = rand() % moves.size();
+			makeMove(state2, moves[random], state);
+			printBoard(state);
+		}
+		
 	}
 }
 /* ******************************************************************************************** */
