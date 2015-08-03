@@ -1,0 +1,8 @@
+graph {
+"start" -- "final"
+"buy(Drill,arg2)" -- "final"
+"buy(Milk,arg2)" -- "final"
+"buy(Banana,arg2)" -- "final"
+"start" -- "buy(Milk,arg2)"
+"start" -- "final"
+}
