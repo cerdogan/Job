@@ -22,7 +22,7 @@ __Planning:__
  - __Min-max algorithm__
  - __Partial-order planning__
  - GraphPlan
- - Rejection sampling
+ - __Rejection sampling__
  - Monte-Carlo Localization
  - MCMC 
  - Fuzzy logic?
