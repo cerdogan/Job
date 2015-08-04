@@ -33,7 +33,7 @@ struct Action {
 	map <string, string> objs;
 
 	/// Prints action name
-	 string s_ () const {
+	string s_ () const {
 
 		// Print the name 
 		char buf [256], temp [64];
@@ -106,6 +106,8 @@ Action* declareAction(const string& name, size_t numObjects, const string& argum
 		act->objs[string(buf)] = buf;
 	}
 
+	printf("Created action: '%s'\n", act->s_().c_str());
+
 	// Create and return the action
 	return act;
 }
@@ -120,7 +122,7 @@ void setup (Plan& p) {
 
 	// Create the start and final states
 	Action* first = declareAction("start", 0, 
-		"!At(Home)|Sells(SuMa,Milk)|Sells(SuMa,Banana)|Sells(HaWa,Drill)!");
+		"!At(Home)|Sells(SuMa,Milk)|Sells(SuMa,Banana)|Sells(HaSt,Drill)!");
 	Action* final = declareAction("final", 0, "Have(Milk)|Have(Banana)|Have(Drill)!!");
 
 	// Set the unachieved actions
@@ -154,7 +156,7 @@ void getObjects (const string& lit, vector <string>& objs) {
 void orderingImplications (set <pair <const Action*, const Action*> >& orderings, const 
 	Action* pre, const Action* post) {
 
-	bool dbg = 1;
+	bool dbg = 0;
 	if(dbg) printf("\n\n\n........................................................\n");
 	if(dbg) printf("pre: %s, post: %s\n", pre->s_().c_str(), post->s_().c_str());
 	set <pair <const Action*, const Action*> > newOnes;
@@ -257,6 +259,98 @@ bool resolveThreats (const Plan& p) {
 }
 
 /* ******************************************************************************************** */
+/// Updates the causals, orderings, unachieved and action list in the plan
+/// Previous objects and objects belong to the literal that is being targered for instantiation
+/// For instance: At(arg1) -> At(home) => ({arg1}, {home}) 
+Action* instantiateAction (Plan& p, const Action* act, const map <string, string>& replacements) {
+
+	// Print input data
+	printf("Replacements: {\n");
+	map <string, string>::const_iterator r_it = replacements.begin();
+	for(; r_it != replacements.end(); r_it++) 
+		printf("\t'%s' -> '%s'\n", r_it->first.c_str(), r_it->second.c_str());
+	printf("}\n");
+
+	// Create the argument list for the new action
+	map <string, string> newObjs = act->objs;
+	string newArgs = act->args;
+	for(r_it = replacements.begin(); r_it != replacements.end(); r_it++) {
+
+		// Update the instances list of the action
+		string old_ = r_it->first, new_ = r_it->second;
+		if(newObjs.find(old_) != newObjs.end()) newObjs[old_] = new_;
+
+		// Update the argument string for creating the action
+		int index = newArgs.find(old_);
+		while(index != string::npos) {
+			newArgs.replace(index, old_.size(), new_);
+			index = newArgs.find(old_, index+1);
+		}
+	}
+
+	// Create the instantiated action instance
+	Action* instAct = declareAction(act->name, act->numObjects, newArgs);
+	instAct->objs = newObjs;
+
+	// Update the causals
+	for(size_t i = 0; i < p.causals.size(); i++) {
+		if(p.causals[i].pre == act) {		
+			p.causals[i].pre = instAct;
+			for(r_it = replacements.begin(); r_it != replacements.end(); r_it++) 
+				if(p.causals[i].cause.find(r_it->first) != string::npos) 
+					p.causals[i].cause.replace(p.causals[i].cause.find(r_it->first), r_it->first.size(), r_it->second);
+		}
+		if(p.causals[i].post == act) {
+			p.causals[i].post = instAct;
+			for(r_it = replacements.begin(); r_it != replacements.end(); r_it++) 
+				if(p.causals[i].cause.find(r_it->first) != string::npos) 
+					p.causals[i].cause.replace(p.causals[i].cause.find(r_it->first), r_it->first.size(), r_it->second);
+		}
+	}
+
+	// Update the orderings
+	for(set <pair <const Action*, const Action*> >::const_iterator it = p.orderings.begin();
+			it != p.orderings.end(); ) {
+		if(it->first == act) {
+			set <pair <const Action*, const Action*> >::const_iterator it2 = it;
+			p.orderings.insert(make_pair(instAct, it2->second));
+			p.orderings.erase(it2);
+			++it; 
+		}
+		else if(it->second== act) {
+			set <pair <const Action*, const Action*> >::const_iterator it2 = it;
+			p.orderings.insert(make_pair(it2->first, instAct));
+			p.orderings.erase(it2);
+			++it; 
+		}
+		else ++it;
+	}
+
+	// Update unachieved literals
+	map <string, const Action*>::iterator it = p.unachieved.begin();
+	int counter = 0;
+	while(it != p.unachieved.end()) {
+		if(it->second == act) {
+			string unachieved = it->first.substr(0,it->first.find("|"));
+			printf("unachieved %d: '%s'\n", counter, unachieved.c_str());
+			map <string, string>::const_iterator r_it = replacements.begin();
+			for(; r_it != replacements.end(); r_it++) 
+				if((unachieved.find(r_it->first) != string::npos)) 
+					unachieved.replace(unachieved.find(r_it->first), r_it->first.size(), r_it->second);
+			std::map<string, const Action*>::iterator toErase = it;
+			++it;
+			p.unachieved.erase(toErase);
+			p.unachieved.insert(make_pair(unachieved+"|"+instAct->s_(), instAct));
+			printf("Attempting to insert: '%s'\n", (unachieved+"|"+instAct->s_()).c_str());
+		}
+		else ++it;
+		counter++;
+	}
+
+	return instAct;
+}
+
+/* ******************************************************************************************** */
 bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> prev, Plan& p2,
 		bool newAction = false) {
 
@@ -318,124 +412,69 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 			// If there are no conflicts, instantiate free variables of chosen action to the subgoal's needs
 			map <string, string> newObjs;
 			if(!conflicts) {
-				string newArgs = act->args;
-				ps(newArgs);
-				for(int j = 0; j < subgoalObjs.size(); j++) {
-					bool free2 = (objs[j].size() > 3) && (objs[j].substr(0,3).compare("arg") == 0);
-					if(free2) {
-						newObjs[objs[j]] = subgoalObjs[j];
-						int index = newArgs.find(objs[j]);
-						while(index != string::npos) {
-							newArgs.replace(index, objs[j].size(), subgoalObjs[j]);
-							index = newArgs.find(objs[j], index+1);
-						}
-					}
-				}
 
-				ps(newArgs);
+				// Generate the list of replacements for free variables
+				map <string, string> replacements;
+				for(int i = 0; i < subgoalObjs.size(); i++) {
+					if(objs[i].substr(0,3).compare("arg") == 0)
+						replacements.insert(make_pair(objs[i], subgoalObjs[i]));
+					else if(subgoalObjs[i].substr(0,3).compare("arg") == 0)
+						replacements.insert(make_pair(subgoalObjs[i], objs[i]));
+				}
 
 				// Replace the chosen action with the instantiated action version
-				Action* instAct = declareAction(act->name, act->numObjects, newArgs);
-				instAct->objs = newObjs;
 				p2 = Plan (p);
+				printf("curr >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+				Action* instAct = instantiateAction(p2, act, replacements);
+				p2.actions.insert(instAct);
 				
+				// Instantiate the previous action
+				printf("prev >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n");
+				Action* prevInstAct = instantiateAction(p2, prevAct, replacements);
+				p2.actions.insert(prevInstAct);
+				p2.actions.erase(prevAct);
+				printf("prevInstAct: '%s'\n", prevInstAct->s_().c_str());
+
 				// Also instantiate the other unachieved goals of the predecessor action 
-				map <string, const Action*>::iterator it = p2.unachieved.begin();
-				while(it != p2.unachieved.end()) {
-					if(it->second == prevAct) {
-						string unachieved = it->first.substr(0,it->first.find("|"));
-						if(unachieved.compare(subgoal) == 0) {
-							++it;
-							continue;
-						}
-						printf("unachieved: '%s', action: %s\n", unachieved.c_str(), prevAct->s_().c_str());
-						for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
-							bool free2 = (subgoalObjs[j].size() > 3) && (subgoalObjs[j].substr(0,3).compare("arg") == 0);
-							printf("\tsubgoalObjs[%d]: %s, free2: %d, objs[%d]: %s\n", j, subgoalObjs[j].c_str(), free2, j, objs[j].c_str());
-							if(free2 && unachieved.find(subgoalObjs[j]) != string::npos) {
-								printf("here: "); ps(unachieved); fflush(stdout);
-								unachieved.replace(unachieved.find(subgoalObjs[j]), objs[j].size(), objs[j]);
-							}
-						}
-						std::map<string, const Action*>::iterator toErase = it;
-						++it;
-						p2.unachieved.erase(toErase);
-						p2.unachieved.insert(make_pair(unachieved+"|"+prevAct->s_(), prevAct));
-					}
-					else ++it;
-				}
+				// map <string, const Action*>::iterator it = p2.unachieved.begin();
+				// while(it != p2.unachieved.end()) {
+				// 	if(it->second == prevAct) {
+				// 		string unachieved = it->first.substr(0,it->first.find("|"));
+				// 		if(unachieved.compare(subgoal) == 0) {
+				// 			++it;
+				// 			continue;
+				// 		}
+				// 		printf("unachieved: '%s', action: %s\n", unachieved.c_str(), prevAct->s_().c_str());
+				// 		for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
+				// 			bool free2 = (subgoalObjs[j].size() > 3) && (subgoalObjs[j].substr(0,3).compare("arg") == 0);
+				// 			printf("\tsubgoalObjs[%d]: %s, free2: %d, objs[%d]: %s\n", j, subgoalObjs[j].c_str(), free2, j, objs[j].c_str());
+				// 			if(free2 && unachieved.find(subgoalObjs[j]) != string::npos) {
+				// 				printf("here: "); ps(unachieved); fflush(stdout);
+				// 				unachieved.replace(unachieved.find(subgoalObjs[j]), objs[j].size(), objs[j]);
+				// 			}
+				// 		}
+				// 		std::map<string, const Action*>::iterator toErase = it;
+				// 		++it;
+				// 		p2.unachieved.erase(toErase);
+				// 		p2.unachieved.insert(make_pair(unachieved+"|"+prevAct->s_(), prevAct));
+				// 	}
+				// 	else ++it;
+				// }
 
 				// Add it to the list and update unachieved preconditions
-				p2.actions.insert(instAct);
 				if(newAction) {
 					for(int i = 0; i < instAct->pres.size(); i++) 
 						p2.unachieved.insert(make_pair(instAct->pres[i] + "|" + instAct->s_(), instAct));
 				}
 
 				// Add causality and ordering
-				p2.causals.push_back(Causal(instAct, prevAct, subgoal));
-				p2.orderings.insert(make_pair(instAct, prevAct));
-				orderingImplications(p2.orderings, instAct, prevAct);
+				p2.causals.push_back(Causal(instAct, prevInstAct, subgoal));
+				p2.orderings.insert(make_pair(instAct, prevInstAct));
+				orderingImplications(p2.orderings, instAct, prevInstAct);
 
 				// If already exists in the plan in an uninstantiated form, update it
 				if(!newAction) {
-	
-					// Remove the data related to previous uninstantiated version
 					p2.actions.erase(act);
-					printf("\tRemoved uninstantiated action: %s: %s\n", act->name.c_str(), act->args.c_str());
-					map <string, const Action*>::iterator it = p2.unachieved.begin();
-					while(it != p2.unachieved.end()) {
-						if(it->second == act) {
-							string unachieved = it->first.substr(0,it->first.find("|"));
-							for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
-								bool free2 = (objs[j].size() > 3) && (objs[j].substr(0,3).compare("arg") == 0);
-								if(free2) unachieved.replace(unachieved.find(objs[j]+"|"+act->s_()), objs[j].size(), subgoalObjs[j]);
-							}
-							std::map<string, const Action*>::iterator toErase = it;
-							++it;
-							p2.unachieved.erase(toErase);
-							p2.unachieved.insert(make_pair(unachieved+"|"+instAct->s_(), instAct));
-						}
-						else ++it;
-					}
-
-					// Transfer causality
-					for(size_t i = 0; i < p2.causals.size(); i++) {
-						if(p2.causals[i].pre == act) {		
-							p2.causals[i].pre = instAct;
-							for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
-								bool free2 = (objs[j].size() > 3) && (objs[j].substr(0,3).compare("arg") == 0);
-								if(free2) p2.causals[i].cause.replace(p2.causals[i].cause.find(objs[j]), objs[j].size(), 
-									subgoalObjs[j]);
-							}
-						}
-						if(p2.causals[i].post == act) {
-							p2.causals[i].post = instAct;
-							for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
-								bool free2 = (objs[j].size() > 3) && (objs[j].substr(0,3).compare("arg") == 0);
-								if(free2) p2.causals[i].cause.replace(p2.causals[i].cause.find(objs[j]), objs[j].size(), 
-									subgoalObjs[j]);
-							}
-						}
-					}
-
-					// Transfer ordering data
-					for(set <pair <const Action*, const Action*> >::const_iterator it = p2.orderings.begin();
-							it != p2.orderings.end(); ) {
-						if(it->first == act) {
-							set <pair <const Action*, const Action*> >::const_iterator it2 = it;
-							p2.orderings.insert(make_pair(instAct, it2->second));
-							p2.orderings.erase(it2);
-							++it; 
-						}
-						else if(it->second== act) {
-							set <pair <const Action*, const Action*> >::const_iterator it2 = it;
-							p2.orderings.insert(make_pair(it2->first, instAct));
-							p2.orderings.erase(it2);
-							++it; 
-						}
-						else ++it;
-					}
 				}
 				
 				// See if the threats can be resolved and a plan can be constructed after this choice
@@ -454,12 +493,12 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 void printGraph (const Plan& p) {
 
 	FILE* graphFile = fopen("graph.dot", "w+");
-	fprintf(graphFile, "graph {\n");
+	fprintf(graphFile, "digraph {\n");
 	for(set <pair <const Action*, const Action*> >::const_iterator it = p.orderings.begin();
 			it != p.orderings.end(); it++) {
 		const Action* act1 = it->first, *act2 = it->second;
-		fprintf(graphFile, "\"%s\" -- \"%s\"\n", act1->s_().c_str(), act2->s_().c_str());
-		printf("\"%s\" -- \"%s\"\n", act1->s_().c_str(), act2->s_().c_str());
+		fprintf(graphFile, "\"%s\" -> \"%s\"\n", act1->s_().c_str(), act2->s_().c_str());
+		// printf("\"%s\" -> \"%s\"\n", act1->s_().c_str(), act2->s_().c_str());
 	}
 	fprintf(graphFile, "}\n");
 	fclose(graphFile);

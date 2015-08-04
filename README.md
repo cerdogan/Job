@@ -20,7 +20,7 @@ __Planning:__
  - __Decision tree__
  - __Discrete constraint satisfaction (...)__
  - __Min-max algorithm__
- - Partial-order planning
+ - __Partial-order planning__
  - GraphPlan
  - Rejection sampling
  - Monte-Carlo Localization
