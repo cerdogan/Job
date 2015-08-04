@@ -33,7 +33,7 @@ struct Action {
 	map <string, string> objs;
 
 	/// Prints action name
-	 string printName () const {
+	 string s_ () const {
 
 		// Print the name 
 		char buf [256], temp [64];
@@ -72,7 +72,7 @@ struct Causal {
 struct Plan {
 	set <const Action*> actions; //< may be uninstantiated	
 	vector <Causal> causals;
-	vector <pair <const Action*, const Action*> > orderings;
+	set <pair <const Action*, const Action*> > orderings;
 	map <string, const Action*> unachieved;
 	Plan (const Plan& p) : unachieved(p.unachieved), actions(p.actions), causals(p.causals),
 		orderings(p.orderings) {}
@@ -99,6 +99,13 @@ Action* declareAction(const string& name, size_t numObjects, const string& argum
 		preIndex = postIndex+1;
 	}
 
+	// Create the uninstantiated actions
+	for(int i = 0; i < numObjects; i++) {
+		char buf [8];
+		sprintf(buf, "arg%d", i+1);
+		act->objs[string(buf)] = buf;
+	}
+
 	// Create and return the action
 	return act;
 }
@@ -112,14 +119,14 @@ void setup (Plan& p) {
 	domainActions.push_back(declareAction("go", 2, "At(arg1)!At(arg2)!At(arg1)"));
 
 	// Create the start and final states
-	Action* first = declareAction("start", 2, 
-		"!At(Home)|Sells(SM,Milk)|Sells(SM,Banana)|Sells(HW,Drill)!");
-	Action* final = declareAction("final", 2, "Have(Milk)|Have(Banana)|Have(Drill)!!");
+	Action* first = declareAction("start", 0, 
+		"!At(Home)|Sells(SuMa,Milk)|Sells(SuMa,Banana)|Sells(HaWa,Drill)!");
+	Action* final = declareAction("final", 0, "Have(Milk)|Have(Banana)|Have(Drill)!!");
 
 	// Set the unachieved actions
 	for(int i = 0; i < final->pres.size(); i++) 
-		p.unachieved.insert(make_pair(final->pres[i], final));
-	p.orderings.push_back(make_pair(first, final));
+		p.unachieved.insert(make_pair(final->pres[i] + "|" + final->s_(), final));
+	p.orderings.insert(make_pair(first, final));
 	p.actions.insert(first);
 	p.actions.insert(final);
 }
@@ -144,32 +151,37 @@ void getObjects (const string& lit, vector <string>& objs) {
 /* ******************************************************************************************** */
 /// After an ordering b < c is given, we update the orderings such that for any a < b, a < c is
 /// added and for any c < d, b < d is added.
-void orderingImplications (vector <pair <const Action*, const Action*> >& orderings, const 
+void orderingImplications (set <pair <const Action*, const Action*> >& orderings, const 
 	Action* pre, const Action* post) {
 
-	printf("........................................................\n");
-	printf("pre: %s, post: %s\n", pre->printName().c_str(), post->printName().c_str());
-	vector <pair <const Action*, const Action*> > newOnes;
-	for(size_t i = 0; i < orderings.size(); i++) {
+	bool dbg = 1;
+	if(dbg) printf("\n\n\n........................................................\n");
+	if(dbg) printf("pre: %s, post: %s\n", pre->s_().c_str(), post->s_().c_str());
+	set <pair <const Action*, const Action*> > newOnes;
+	int i = 0;
+	for(set <pair <const Action*, const Action*> >::const_iterator it =  orderings.begin();
+			it != orderings.end(); it++) {
 
-		printf("ordering %lu: %s <- %s\n", i, orderings[i].first->printName().c_str(), orderings[i].second->printName().c_str());
+		if(dbg) printf("ordering %d: %s <- %s\n", i++, it->first->s_().c_str(), it->second->s_().c_str());
 
 		// We have b < c: for a given a < b, add a < c
-		if(orderings[i].second == pre) {	
-			printf("\tpreCase: %s <- %s\n", orderings[i].first->printName().c_str(), post->printName().c_str());
-			newOnes.push_back(make_pair(orderings[i].first, post));
+		if(it->second == pre) {	
+			if(dbg) printf("\tpreCase: %s <- %s\n", it->first->s_().c_str(), post->s_().c_str());
+			newOnes.insert(make_pair(it->first, post));
 		}
 		
 		// We have b < c: for a given c < d, add b < d
-		if(orderings[i].first == post) {
-			printf("\tpostCase: %s <- %s\n", pre->printName().c_str(), orderings[i].second->printName().c_str());
-			newOnes.push_back(make_pair(pre, orderings[i].second));
+		if(it->first == post) {
+			if(dbg) printf("\tpostCase: %s <- %s\n", pre->s_().c_str(), it->second->s_().c_str());
+			newOnes.insert(make_pair(pre, it->second));
 		}
 	}
 
 	// Add the new ones to the current list
 	if(!newOnes.empty())
-		orderings.insert(orderings.end(), newOnes.begin(), newOnes.end());
+		for(set <pair <const Action*, const Action*> >::const_iterator it =  orderings.begin();
+			it != orderings.end(); it++) 
+			orderings.insert(make_pair(it->first, it->second));
 }
 
 /* ******************************************************************************************** */
@@ -187,12 +199,13 @@ bool resolveThreats (const Plan& p) {
 			// A threat is not possible if this action is after the "post action" or before the "pre"
 			const Causal& causal = p.causals[caus_idx];
 			bool afterPost = false, beforePre = false;
-			for(size_t i = 0; i < p.orderings.size(); i++) {
-				if((causal.post == p.orderings[i].first) && (*actIt == p.orderings[i].second)) {
+			for(set <pair <const Action*, const Action*> >::const_iterator it =  p.orderings.begin();
+					it != p.orderings.end(); it++) {
+				if((causal.post == it->first) && (*actIt == it->second)) {
 					afterPost = true;
 					break;
 				}
-				if((causal.pre == p.orderings[i].second) && (*actIt == p.orderings[i].first)) {
+				if((causal.pre == it->second) && (*actIt == it->first)) {
 					beforePre = true;
 					break;
 				}
@@ -211,23 +224,24 @@ bool resolveThreats (const Plan& p) {
 			
 			// See if a promotion (actIt < pre) or demotion (post < actIt) is possible
 			bool promotionPossible = true, demotionPossible = true; 
-			for(size_t i = 0; i < p.orderings.size(); i++) {
-				if((causal.pre == p.orderings[i].first) && (*actIt == p.orderings[i].second)) 
+			for(set <pair <const Action*, const Action*> >::const_iterator it =  p.orderings.begin();
+					it != p.orderings.end(); it++) {
+				if((causal.pre == it->first) && (*actIt == it->second)) 
 					promotionPossible = false;
-				if((causal.post == p.orderings[i].second) && (*actIt == p.orderings[i].first)) 
+				if((causal.post == it->second) && (*actIt == it->first)) 
 					demotionPossible = false;
 			}
 			
 			// Create a promotion if possible
 			if(promotionPossible) {
 				Plan p2 (p);
-				p2.orderings.push_back(make_pair(*actIt, causal.pre));
+				p2.orderings.insert(make_pair(*actIt, causal.pre));
 				orderingImplications(p2.orderings, *actIt, causal.pre);
 				return resolveThreats(p2);
 			}
 			else if(demotionPossible) {
 				Plan p2 (p);
-				p2.orderings.push_back(make_pair(causal.post, *actIt));
+				p2.orderings.insert(make_pair(causal.post, *actIt));
 				orderingImplications(p2.orderings, causal.post, *actIt);
 				return resolveThreats(p2);
 			}
@@ -250,7 +264,8 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 	printf("\t\tcalled with: %s: %s\n", act->name.c_str(), act->args.c_str());
 
 	// Get the previous action information
-	string subgoal = prev.first;
+	string subgoal = (prev.first).substr(0, prev.first.find("|"));
+	ps(subgoal);
 	const Action* prevAct = prev.second;
 	string subgoalName = subgoal.substr(0, subgoal.find("("));
 	vector <string> subgoalObjs;
@@ -274,7 +289,7 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 					p2.actions.insert(act);
 				}
 				p2.causals.push_back(Causal(act, prevAct, subgoal));
-				p2.orderings.push_back(make_pair(act, prevAct));
+				p2.orderings.insert(make_pair(act, prevAct));
 				orderingImplications(p2.orderings, act, prevAct);
 				printf("No objects: Adding action: %s: %s\n", act->name.c_str(), act->args.c_str());
 
@@ -324,16 +339,42 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 				instAct->objs = newObjs;
 				p2 = Plan (p);
 				
+				// Also instantiate the other unachieved goals of the predecessor action 
+				map <string, const Action*>::iterator it = p2.unachieved.begin();
+				while(it != p2.unachieved.end()) {
+					if(it->second == prevAct) {
+						string unachieved = it->first.substr(0,it->first.find("|"));
+						if(unachieved.compare(subgoal) == 0) {
+							++it;
+							continue;
+						}
+						printf("unachieved: '%s', action: %s\n", unachieved.c_str(), prevAct->s_().c_str());
+						for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
+							bool free2 = (subgoalObjs[j].size() > 3) && (subgoalObjs[j].substr(0,3).compare("arg") == 0);
+							printf("\tsubgoalObjs[%d]: %s, free2: %d, objs[%d]: %s\n", j, subgoalObjs[j].c_str(), free2, j, objs[j].c_str());
+							if(free2 && unachieved.find(subgoalObjs[j]) != string::npos) {
+								printf("here: "); ps(unachieved); fflush(stdout);
+								unachieved.replace(unachieved.find(subgoalObjs[j]), objs[j].size(), objs[j]);
+							}
+						}
+						std::map<string, const Action*>::iterator toErase = it;
+						++it;
+						p2.unachieved.erase(toErase);
+						p2.unachieved.insert(make_pair(unachieved+"|"+prevAct->s_(), prevAct));
+					}
+					else ++it;
+				}
+
 				// Add it to the list and update unachieved preconditions
 				p2.actions.insert(instAct);
 				if(newAction) {
 					for(int i = 0; i < instAct->pres.size(); i++) 
-						p2.unachieved.insert(make_pair(instAct->pres[i], instAct));
+						p2.unachieved.insert(make_pair(instAct->pres[i] + "|" + instAct->s_(), instAct));
 				}
 
 				// Add causality and ordering
 				p2.causals.push_back(Causal(instAct, prevAct, subgoal));
-				p2.orderings.push_back(make_pair(instAct, prevAct));
+				p2.orderings.insert(make_pair(instAct, prevAct));
 				orderingImplications(p2.orderings, instAct, prevAct);
 
 				// If already exists in the plan in an uninstantiated form, update it
@@ -345,15 +386,15 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 					map <string, const Action*>::iterator it = p2.unachieved.begin();
 					while(it != p2.unachieved.end()) {
 						if(it->second == act) {
-							string unachieved = it->first;
+							string unachieved = it->first.substr(0,it->first.find("|"));
 							for(int j = 0; j < subgoalObjs.size(); j++) {			// replace the free argument if one exists
 								bool free2 = (objs[j].size() > 3) && (objs[j].substr(0,3).compare("arg") == 0);
-								if(free2) unachieved.replace(unachieved.find(objs[j]), objs[j].size(), subgoalObjs[j]);
+								if(free2) unachieved.replace(unachieved.find(objs[j]+"|"+act->s_()), objs[j].size(), subgoalObjs[j]);
 							}
 							std::map<string, const Action*>::iterator toErase = it;
 							++it;
 							p2.unachieved.erase(toErase);
-							p2.unachieved.insert(make_pair(unachieved, instAct));
+							p2.unachieved.insert(make_pair(unachieved+"|"+instAct->s_(), instAct));
 						}
 						else ++it;
 					}
@@ -378,15 +419,27 @@ bool tryAction (const Plan& p, const Action* act, pair<string,const Action*> pre
 						}
 					}
 
-					// Transfer causality and ordering data
-					for(size_t i = 0; i < p2.orderings.size(); i++) {
-						if(p2.orderings[i].first == act) p2.orderings[i].first = instAct;
-						if(p2.orderings[i].second == act) p2.orderings[i].second = instAct;
+					// Transfer ordering data
+					for(set <pair <const Action*, const Action*> >::const_iterator it = p2.orderings.begin();
+							it != p2.orderings.end(); ) {
+						if(it->first == act) {
+							set <pair <const Action*, const Action*> >::const_iterator it2 = it;
+							p2.orderings.insert(make_pair(instAct, it2->second));
+							p2.orderings.erase(it2);
+							++it; 
+						}
+						else if(it->second== act) {
+							set <pair <const Action*, const Action*> >::const_iterator it2 = it;
+							p2.orderings.insert(make_pair(it2->first, instAct));
+							p2.orderings.erase(it2);
+							++it; 
+						}
+						else ++it;
 					}
 				}
 				
 				// See if the threats can be resolved and a plan can be constructed after this choice
-				printf("With objects: Adding action: %s: %s\n", instAct->name.c_str(), instAct->args.c_str());
+				printf("With objects: Adding action: %s\n", instAct->s_().c_str());
 				if(resolveThreats(p2)) return true;
 				else continue;
 			}
@@ -402,10 +455,11 @@ void printGraph (const Plan& p) {
 
 	FILE* graphFile = fopen("graph.dot", "w+");
 	fprintf(graphFile, "graph {\n");
-	for(int i = 0; i < p.orderings.size(); i++) {
-		const Action* act1 = p.orderings[i].first, *act2 = p.orderings[i].second;
-		fprintf(graphFile, "\"%s\" -- \"%s\"\n", act1->printName().c_str(), act2->printName().c_str());
-		printf("\"%s\" -- \"%s\"\n", act1->printName().c_str(), act2->printName().c_str());
+	for(set <pair <const Action*, const Action*> >::const_iterator it = p.orderings.begin();
+			it != p.orderings.end(); it++) {
+		const Action* act1 = it->first, *act2 = it->second;
+		fprintf(graphFile, "\"%s\" -- \"%s\"\n", act1->s_().c_str(), act2->s_().c_str());
+		printf("\"%s\" -- \"%s\"\n", act1->s_().c_str(), act2->s_().c_str());
 	}
 	fprintf(graphFile, "}\n");
 	fclose(graphFile);
@@ -423,6 +477,11 @@ bool search (const Plan& p_) {
 
 		// Print state as a graph
 		printGraph(p);
+		map <string, const Action*>::iterator it = p.unachieved.begin();
+		printf("\n\n\n\n\n\n\nUnachieved size: %d\n", p.unachieved.size());
+		for(int i = 0; it != p.unachieved.end(); it++, i++) {
+			printf("%d: %s due %s\n", i, it->first.c_str(), it->second->s_().c_str());
+		}
 
 		// If all the actions are satisfied, return
 		if(p.unachieved.empty()) return true;
@@ -430,9 +489,9 @@ bool search (const Plan& p_) {
 		
 		// Choose a subgoal of any action in the plan that is not yet satisfied
 		size_t numUnachieved = p.unachieved.size();
-		map <string, const Action*>::const_iterator randIt = p.unachieved.begin();
-		advance(randIt, rand() % numUnachieved);
-		printf("\n\n\n\n\n\nChosen subgoal: %s\n", randIt->first.c_str());
+		map <string, const Action*>::const_reverse_iterator randIt = p.unachieved.rbegin();
+		// advance(randIt, rand() % numUnachieved);
+		printf("\n\nChosen subgoal: %s\n", randIt->first.c_str());
 		printf("\tprevAct: : %s: %s\n", randIt->second->name.c_str(), randIt->second->args.c_str());
 
 		// Check if any of the actions already in the plan can satisfy this subgoal

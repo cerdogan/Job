@@ -1,8 +1,10 @@
 graph {
-"start" -- "final"
-"buy(Drill,arg2)" -- "final"
 "buy(Milk,arg2)" -- "final"
-"buy(Banana,arg2)" -- "final"
 "start" -- "buy(Milk,arg2)"
+"buy(Drill,arg2)" -- "final"
+"buy(Banana,arg2)" -- "final"
+"start" -- "buy(Drill,arg2)"
 "start" -- "final"
+"start" -- "buy(Banana,arg2)"
+"go(arg1,SuMa)" -- "buy(Milk,arg2)"
 }
