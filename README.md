@@ -23,7 +23,7 @@ __Planning:__
  - __Partial-order planning__
  - GraphPlan
  - __Rejection sampling__
- - Monte-Carlo Localization
+ - __Monte-Carlo Localization__
  - MCMC 
  - Fuzzy logic?
  - Dynamic programming
