@@ -26,7 +26,7 @@ __Planning:__
  - __Monte-Carlo Localization__
  - MCMC 
  - Fuzzy logic?
- - Dynamic programming
+ - __Dynamic programming__
  - Hidden Markov Models (HMMs)
  - Support vector machines (SVMs)
  - Expectation-Maximization
