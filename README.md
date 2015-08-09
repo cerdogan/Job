@@ -27,7 +27,7 @@ __Planning:__
  - MCMC 
  - Fuzzy logic?
  - __Dynamic programming__
- - Hidden Markov Models (HMMs)
+ - __Hidden Markov Model: Viterbi Algorithm__
  - Support vector machines (SVMs)
  - Expectation-Maximization
  - Neural networks
