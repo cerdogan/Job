@@ -1,0 +1,5 @@
+To build the library simply go through the ./configure; make; make install cycle.
+
+In order to use it, you will be required to include in your code file the "Array.hh" header, which contains a handy C++ implementation of Vector and Matrices.
+
+If you have the boost library installed (http://www.boost.org), you could leverage the boost ublas vector / matrix implementation. In that case, a version of the library for ublas will also be built.

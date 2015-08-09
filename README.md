@@ -91,4 +91,5 @@ Tools
 ---------------------------------------------------------
 
 __Visualization:__
- - Graphviz
+ - __Graphviz: Decision tree, POP examples__
+ - __Quadratic Programming: QuadProg++ library (SVMs)__
