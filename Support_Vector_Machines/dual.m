@@ -23,6 +23,8 @@ i=min(find((a>0.1)&(data(:,3)==1)))
 G=data(:,1:2)*data(:,1:2)'
 b=1-G(i,:)*(a.*data(:,3))
 
+xs = [0:0.01:1]
+ys = -(w(1) * xs + b) / w(2)
 plot(data(:,1), data(:,2), 'o')
 hold on;
 plot(xs, ys, '-k')

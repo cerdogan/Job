@@ -1,0 +1,13 @@
+set output 'svm.png'
+set terminal png
+set grid front
+set pointsize 1.5
+set size ratio -1
+set nokey
+ set xrange [0:1]
+ set yrange [0:1]
+set arrow from 0.0,0.754632 to 1.0,0.201625 nohead
+plot "data.txt" using 1:2
+
+set term pop
+set output

@@ -28,7 +28,7 @@ __Planning:__
  - Fuzzy logic?
  - __Dynamic programming__
  - __Hidden Markov Model: Viterbi Algorithm__
- - Support vector machines (SVMs)
+ - __Support vector machines (SVMs)__
  - Expectation-Maximization
  - Neural networks
  - Reinforcement learning
@@ -93,3 +93,4 @@ Tools
 __Visualization:__
  - __Graphviz: Decision tree, POP examples__
  - __Quadratic Programming: QuadProg++ library (SVMs)__
+ - __GNU Plot: SVM__
