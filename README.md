@@ -29,8 +29,8 @@ __Planning:__
  - __Dynamic programming__
  - __Hidden Markov Model: Viterbi Algorithm__
  - __Support vector machines (SVMs)__
- - Expectation-Maximization
- - Neural networks
+ - __Expectation-Maximization: (MoGs)__
+ - Neural networks: Backpropagation Algorithm
  - Reinforcement learning
  - Cell decomposition
  - Potential fields
