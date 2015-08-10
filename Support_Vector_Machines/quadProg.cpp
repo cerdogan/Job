@@ -5,7 +5,7 @@
  * @brief The use of quadratic programming to minimize the function 0.5x1^2+x2^2-x1*x2-2*x1-6*x2
  * with constraints (x1 + x2) <= 2, (-x1 + 2x2) <= 2, (2x1 + x2) <= 3, 0 <= x1, 0 <= x2.
  * Below, the arguments G and g0 define the cost function as 0.5 * x' * G * x + g0 * x
- * The inequality constraint is defined as x' * CI + ci0 >= 0
+ * The inequality constraint is defined as x' * CI + ci0 >= 0_N
  * The equality constraint is defined as x' * CE + ce0 = 0
  */
 
