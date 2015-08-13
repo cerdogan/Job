@@ -30,7 +30,7 @@ __Planning:__
  - __Hidden Markov Model: Viterbi Algorithm__
  - __Support vector machines (SVMs)__
  - __Expectation-Maximization: (MoGs)__
- - Neural networks: Backpropagation Algorithm
+ - __Neural networks: Backpropagation Algorithm__
  - Reinforcement learning
  - Cell decomposition
  - Potential fields
