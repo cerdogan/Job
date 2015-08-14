@@ -1,7 +1,7 @@
 # @file bug0.py
 # @author Can Erdogan
 # @date 2015-08-14
-# @brief Simple bug 0 implementation for 2D particle motion planning
+# @brief Failure case for bug 0 implementation for 2D particle motion planning 
 
 import time
 import math
@@ -59,29 +59,41 @@ def intersects (xa, ya, xb, yb, xc, yc, xd, yd):
 def main():
 	win = GraphWin("My Circle", 400, 600, autoflush=False)
 
-	# Draw the first obstacle
-	r1 = Rectangle(Point(70, 360), Point(330, 410))
-	r1.draw(win)
-	r1.setWidth(2)
+	# Draw the obstacle
 	grey = color_rgb(100,100,100)
-	r1.setFill(grey)
-	objs = []
-	objs.append([Point(70,360), Point(330,360), Point(330,410), Point(70,410)])
-	#objs.append([Point(330,410), Point(70,410)])
-
-	# Draw the second obstacle in two parts
-	r2a = Rectangle(Point(130, 250), Point(230, 300))
+	r2a = Rectangle(Point(80, 250), Point(110, 150))
 	r2a.draw(win)
 	r2a.setWidth(2)
 	r2a.setFill(grey)
-	r2b = Rectangle(Point(230, 300), Point(280, 150))
+	r2b = Rectangle(Point(80, 120), Point(280, 150))
 	r2b.draw(win)
 	r2b.setWidth(2)
 	r2b.setFill(grey)
-	objs.append([Point(130,250), Point(230,250), Point(230,150), Point(280,150), Point(280,300),Point(130,300)])
+	r2c = Rectangle(Point(250, 350), Point(280, 150))
+	r2c.draw(win)
+	r2c.setWidth(2)
+	r2c.setFill(grey)
+	r2d = Rectangle(Point(280, 380), Point(110, 350))
+	r2d.draw(win)
+	r2d.setWidth(2)
+	r2d.setFill(grey)
+	r2e = Rectangle(Point(200, 250), Point(80, 280))
+	r2e.draw(win)
+	r2e.setWidth(2)
+	r2e.setFill(grey)
+
+	objs = []
+	objs.append([ Point(200,280), Point(80,280), Point(80,120), Point(280,120), Point(280,380), 
+		Point(110,380), Point(110,350), Point(250,350), Point(250,150), Point(110,150), 
+		Point(110,250), Point(200,250)])
+	for p in objs[0]:
+		pc = Circle(p, 3)
+		pc.setFill(color_rgb(0,0,0))
+		pc.draw(win)
+	
 
 	# Draw the goal location
-	g = Circle(Point(210,210), 4)
+	g = Circle(Point(180,210), 4)
 	g.draw(win)
 	g.setFill(color_rgb(0,200,0))
 	gPos = g.getCenter()
@@ -122,7 +134,7 @@ def main():
 
 			# Check if the new location is in collision with one of the objects
 			intersectEdges = []
-			for obj_i in xrange(0,2):
+			for obj_i in xrange(0,len(objs)):
 				obj = objs[obj_i]
 				for i in xrange(0,len(obj)):
 		
