@@ -1,7 +1,7 @@
-# @file bug1.py
+# @file bug2.py
 # @author Can Erdogan
 # @date 2015-08-14
-# @brief Simple bug 1 implementation for 2D particle motion planning
+# @brief Simple bug 2 implementation for 2D particle motion planning
 
 import time
 import math
@@ -160,9 +160,17 @@ def followEdge (edges, edgeId, b, gPos, startPos, closestDist, iters):
 	return [3, 0]
 
 #-------------------------------------------------------------------------------------------------
-# Moves the bug onto the given point (e.g. closest point to the goal), circumnavigating the object
-def goToPointAroundObject():
-	print "hi"
+# Returns the next point on the object surface that crosses the line between the starting position 
+# and the goal position
+def nextLinePoint (edges, edgeId, sPos, gPos):
+
+	for i in xrange(0,len(edges)):
+		p0 = edges[(i + edgeId) % len(edges)]
+		p1 = edges[(i + edgeId + 1) % len(edges)]
+		res = intersects(p0.getX(), p0.getY(), p1.getX(), p1.getY(), sPos.getX(), sPos.getY(), 
+			gPos.getX(), gPos.getY())
+		if res[2] == 1:
+			return Point(res[0], res[1])
 
 #-------------------------------------------------------------------------------------------------
 def main():
@@ -199,6 +207,7 @@ def main():
 
 		m = win.getMouse() # pause for click in window
 		#m = Point(110, 450)
+		sPos = m
 		b = Circle(m, 4)
 		b.draw(win)
 		b.setFill(color_rgb(200,0,0))
@@ -207,22 +216,17 @@ def main():
 		k2 = 1.0
 		iters = 0
 
-		minDist = 10000000
 		navigating = 0
 		currEdgeId = 0
 		navEdges = []
-		startPoint = Point(0,0)
-		bestPoint = Point(0,0)
+		nextPoint = Point(0,0)
 		collisionResult = []
 		goBest = 0
 		reachedBest = 0
 		navIters = 0
-		startCircle = Circle(Point(2000,2000), 4)
-		startCircle.setFill(color_rgb(0,0,200))
-		startCircle.draw(win)
-		bestCircle = Circle(Point(2000,2000), 4)
-		bestCircle.setFill(color_rgb(0,0,0))
-		bestCircle.draw(win)
+		nextCircle = Circle(Point(2000,2000), 4)
+		nextCircle.setFill(color_rgb(0,0,200))
+		nextCircle.draw(win)
 		greedyIters = 0
 		while True:
 
@@ -232,7 +236,7 @@ def main():
 			iters = iters + 1
 		
 			# Check if the bug can move to the goal directly (if reached, stop; if good, try again)
-			if not(navigating) and not(goBest):
+			if not(navigating):
 
 				# Attempt the motion
 				collisionResult = headTowardGoal(objs, b, gPos)
@@ -243,57 +247,31 @@ def main():
 				# For a collision, initialize the navigation
 				if (greedyIters > 1) and (collisionResult[0] == 1): 
 					navigating = 1
-					startPoint = b.getCenter()
-					minDist = 1000000
 					navEdges = objs[collisionResult[1]]
 					currEdgeId = collisionResult[2]
 					navIters = 0
-					startCircle.move(startPoint.getX() - startCircle.getCenter().getX(), 
-						startPoint.getY() - startCircle.getCenter().getY())
+	
+					# Get the next line intersection point
+					nextPoint = nextLinePoint (navEdges, currEdgeId + 1, sPos, gPos)
+					nextCircle.move(nextPoint.getX() - nextCircle.getCenter().getX(), 
+						nextPoint.getY() - nextCircle.getCenter().getY())
 			
 			# If there was a collision, circumnavigate the object 
 			if navigating == 1:
 
 				# Move along the current edge of the object
-				followRes = followEdge(navEdges, currEdgeId, b, gPos, startPoint,  minDist, navIters)
+				followRes = followEdge(navEdges, currEdgeId, b, gPos, nextPoint, -1, navIters)
 				navIters = navIters + 1
 				print "followEdge result: %d" % followRes[0]
 					
 				# If the end of the edge is reached, move on to the next edge
 				if followRes[0] == 0: currEdgeId = currEdgeId + 1
 
-				# If the start position is reached, stop navigating and start going to the best
+				# If the next position is reached, stop navigating and go to normal mode
 				if followRes[0] == 1:
 					navigating = 0
-					goBest = 1
-					startCircle.move(2000,2000)
+					nextCircle.move(2000,2000)
 					navIters = 0
-
-				# Update the best position to go
-				if followRes[0] == 2:
-					minDist = followRes[1]
-					bestPoint = b.getCenter()
-					bestCircle.move(bestPoint.getX() - bestCircle.getCenter().getX(), 
-						bestPoint.getY() - bestCircle.getCenter().getY())
-
-			# If the closest point on the obstacle is found, move there
-			if goBest == 1:
-
-				# Move along the current edge of the object (Note: bestPoint is sent instead of startPoint)
-				followRes = followEdge(navEdges, currEdgeId, b, gPos, bestPoint, minDist, navIters)
-				navIters = navIters + 1
-				print "goBest result: %d" % followRes[0]
-			
-				# If the end of the edge is reached, move on to the next edge
-				if followRes[0] == 0: currEdgeId = currEdgeId + 1
-
-				# If the best position is reached, stop greedy and back to normal mode
-				if followRes[0] == 1:
-					navigating = 0
-					goBest = 0
-					bestCircle.move(2000,2000)
-					navIters = 0
-					greedyIters = 0
 
 			win.update()
 			time.sleep(0.00166)

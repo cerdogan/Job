@@ -1,7 +1,7 @@
-# @file bug0.py
+# @file bug1_good.py
 # @author Can Erdogan
 # @date 2015-08-14
-# @brief Simple bug 0 implementation for 2D particle motion planning
+# @brief Demonstration of bug 1 advantage over bug 0.
 
 import time
 import math
