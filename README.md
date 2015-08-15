@@ -34,7 +34,7 @@ __Planning:__
  - Reinforcement learning
  - Cell decomposition
  - Potential fields
- - Bug algorithm!
+ - __Bug algorithms!: 0, 1 & 2__
  - Voronoi diagrams
  - Genetic algorithms
  - POMDPs
