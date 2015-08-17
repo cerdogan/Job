@@ -32,7 +32,7 @@ __Planning:__
  - __Expectation-Maximization: (MoGs)__
  - __Neural networks: Backpropagation Algorithm__
  - Reinforcement learning
- - Cell decomposition
+ - __Cell Decomposition (Exact/Vertical)__
  - Potential fields
  - __Bug algorithms!: 0, 1 & 2__
  - Voronoi diagrams
@@ -51,6 +51,7 @@ __Control:__
  - Lyapunov function
 
 __Miscellaneous:__
+ - __Dijkstra's Algorithm (see cell decomposition)__
  - Kalman Filter	
  - EKF
  - Gauss-Newton Optimization
