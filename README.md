@@ -33,7 +33,7 @@ __Planning:__
  - __Neural networks: Backpropagation Algorithm__
  - Reinforcement learning
  - __Cell Decomposition (Exact/Vertical)__
- - Potential fields
+ - __Potential fields__
  - __Bug algorithms!: 0, 1 & 2__
  - Voronoi diagrams
  - Genetic algorithms
