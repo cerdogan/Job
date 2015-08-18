@@ -36,8 +36,16 @@ struct AVL {
 	Node* root;									///< Root of the tree
 	FILE* graphFile;
 
-	// Basic utilities
-  Node* search (const X& x); 	
+ 	/* ****************************************************************************************** */
+	Node* search (const X& x) { return search(x, root); }
+
+ 	/* ****************************************************************************************** */
+  Node* search (const X& x, Node* curr) {
+		if(curr->left != NULL && comp(x, curr->value)) return search(x, curr->left); 
+		else if(curr->right != NULL && comp(curr->value, x)) return search(x, curr->right); 
+		else if(!comp(curr->value, x) && !comp(x, curr->value)) return curr;
+		else return NULL;
+	}
 
  	/* ****************************************************************************************** */
 	void draw () { 
@@ -155,6 +163,10 @@ struct AVL {
 		int counter = 0;
 		while(curr != NULL) {
 			if(counter++ > 10) break;
+
+			// Update the height
+			curr->height = max(curr->left ? curr->left->height : 0, 
+				curr->right ? curr->right->height : 0) + 1;
 
 			// Look at the left rotations (current balance is +2)
 			int currBalance = (curr->right ? curr->right->height : 0) -
@@ -342,10 +354,14 @@ struct AVL {
 
 				// Set the successor at the current location
 				if(curr->parent) {
+					if(succ->parent) {
+						if(succ->parent->left == succ) succ->parent->left = NULL;
+						else succ->parent->right = NULL;
+					}
 					connect(succ, curr->parent, (curr->parent->left == curr));
 					connect(curr->left, succ, true);
 					if(succ != curr->right) connect(curr->right, succ, false);
-					return curr->parent;
+					return succ;
 				}
 				else {
 					root = succ;
@@ -385,9 +401,6 @@ int main () {
 		double x;
 		char c;
 		printf("New operation: \n");
-		//int res = scanf("%c %lf", &c, &x);
-		//printf("Scanf result: %d\n", res);
-		//if(res != 2) continue;
 		cin >> c;
 		cin >> x;
 		if(c == 'i') {

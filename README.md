@@ -70,6 +70,7 @@ __Data structure:__
  - Queue
 
 __Search:__
+ - __AVL Trees__
  - Binary search
  - Re-balancing trees
  - Tree traversals
