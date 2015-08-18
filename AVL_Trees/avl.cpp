@@ -252,6 +252,119 @@ struct AVL {
 			curr->right ? curr->right->height : 0) + 1;
 		return newNode;
 	} 
+
+ 	/* ****************************************************************************************** */
+  void remove (const X& x) { 
+		if(root == NULL) return;
+		else {
+			Node* temp = remove(x,root);
+			if(temp != NULL) retrace(temp);
+		}
+	}
+
+ 	/* ****************************************************************************************** */
+	void connect (Node* child, Node* parent, bool left) {
+		if(child != NULL) child->parent = parent;
+		if(parent != NULL) {
+			if(left) parent->left = child;
+			else parent->right = child;
+		}
+	}
+
+ 	/* ****************************************************************************************** */
+	Node* remove (const X& x, Node* curr) {
+
+		printf("\n%s: %s, node: %s\n", __FUNCTION__, toStr(x).c_str(), toStr(curr->value).c_str());
+
+		// Check the left side 
+		if(curr->left != NULL && comp(x, curr->value)) return remove(x, curr->left); 
+
+		// Check the right side 
+		else if(curr->right != NULL && comp(curr->value, x)) return remove(x, curr->right); 
+
+		// Check if this node should be removed
+		if(!comp(curr->value, x) && !comp(x, curr->value)) {
+
+			// Case 0: No children
+			if(curr->left == NULL && curr->right == NULL) {
+				printf("Case 0\n");
+				if(curr->parent) {
+					if(curr->parent->left == curr) curr->parent->left = NULL;
+					else curr->parent->right = NULL;
+					return curr->parent;
+				}
+				else {
+					root = NULL;
+					return NULL;
+				}
+			}
+
+			// Case 1a: Only left child
+			else if(curr->left != NULL && curr->right == NULL) {
+				printf("Case 1a\n");
+				if(curr->parent) {
+					connect(curr->left, curr->parent, (curr->parent->left == curr));
+					return curr->parent;
+				}
+				else {
+					root = curr->left;
+					curr->left->parent = NULL;
+					return NULL;
+				}
+			}
+
+			// Case 1b: Only right child
+			else if(curr->left == NULL && curr->right != NULL) {
+				printf("Case 1b\n");
+				if(curr->parent) {
+					connect(curr->right, curr->parent, (curr->parent->left == curr));
+					return curr->parent;
+				}
+				else {
+					root = curr->right;
+					curr->right->parent = NULL;
+					return NULL;
+				}
+				delete curr;
+			}
+
+			// Case 2: two children
+			else {
+				printf("Case 2\n");
+
+				// Find the successor node (left most node of the right subtree)
+				Node* succ = curr->right;
+				while(true) {
+					if(succ->left) succ = succ->left;
+					else break;
+				}
+				printf("\tsucc: %s\n", toStr(succ->value).c_str());
+
+				// Set the successor at the current location
+				if(curr->parent) {
+					connect(succ, curr->parent, (curr->parent->left == curr));
+					connect(curr->left, succ, true);
+					if(succ != curr->right) connect(curr->right, succ, false);
+					return curr->parent;
+				}
+				else {
+					root = succ;
+					connect(curr->left, root, true);
+					if(succ != curr->right) connect(curr->right, succ, false);
+					if(succ->parent) {
+						if(succ->parent->left == succ) succ->parent->left = NULL;
+						else succ->parent->right = NULL;
+					}
+					succ->parent = NULL;
+					return NULL;
+				}
+
+			}
+		}
+
+		return NULL;
+	}
+
 };
 
 /* ******************************************************************************************** */
@@ -263,21 +376,28 @@ int main () {
 
   AVL <double> avl (compare, print);
 	avl.insert(50);
-	avl.draw();
 	avl.insert(30);
-	avl.draw();
 	avl.insert(10);
-	avl.draw();
 	avl.insert(20);
-	avl.draw();
 	avl.insert(40);
 	avl.draw();
 	while(true) {
 		double x;
-		printf("Insert value: ");
-		scanf("%lf", &x);
-		printf("Inserting: %lf\n", x);
-		avl.insert(x);
+		char c;
+		printf("New operation: \n");
+		//int res = scanf("%c %lf", &c, &x);
+		//printf("Scanf result: %d\n", res);
+		//if(res != 2) continue;
+		cin >> c;
+		cin >> x;
+		if(c == 'i') {
+			printf("Inserting: %lf\n", x);
+			avl.insert(x);
+		}
+		else if (c == 'r') {
+			printf("Removing: %lf\n", x);
+			avl.remove(x);
+		}
 		avl.draw();
 	}
 	avl.traversal();
