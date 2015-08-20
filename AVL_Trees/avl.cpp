@@ -15,8 +15,8 @@
 using namespace std;
 
 /* ******************************************************************************************** */
-bool compare (const double& x, const double& y) { return x < y; }
-string print (const double& x) { char buf[256]; sprintf(buf, "%.2f", x); return buf; }
+bool compare ( double x,  double y) { return x < y; }
+string print ( double x) { char buf[256]; sprintf(buf, "%.2f", x); return buf; }
 
 /* ******************************************************************************************** */
 int main () {

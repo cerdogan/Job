@@ -14,9 +14,9 @@ template <class X>
 struct AVL {
 
 	bool dbg;
-  bool (*comp) (const X&,const X&);					///< Comparison function for the tree
-  std::string (*toStr) (const X&);				///< Print function for the tree values
-  AVL (bool (*comp_) (const X& , const X&), std::string (*print_) (const X&)) {	///< Constructor
+  bool (*comp) (X,X);					///< Comparison function for the tree
+  std::string (*toStr) (X);				///< Print function for the tree values
+  AVL (bool (*comp_) (X , X), std::string (*print_) (X)) {	///< Constructor
     comp = comp_;
     toStr = print_;
 		root = NULL;
@@ -35,7 +35,10 @@ struct AVL {
 	FILE* graphFile;
 
  	/* ****************************************************************************************** */
-	Node* search (const X& x) { return search(x, root); }
+	Node* search (const X& x) { 
+		if(root == NULL) return NULL;
+		return search(x, root); 
+	}
 
  	/* ****************************************************************************************** */
   Node* search (const X& x, Node* curr) {
@@ -43,6 +46,22 @@ struct AVL {
 		else if(curr->right != NULL && comp(curr->value, x)) return search(x, curr->right); 
 		else if(!comp(curr->value, x) && !comp(x, curr->value)) return curr;
 		else return NULL;
+	}
+
+ 	/* ****************************************************************************************** */
+	std::pair<bool,Node*> search_candidateLoc (const X& x) { 
+		if(root == NULL) return std::make_pair(false, (Node*)NULL);
+		return search_candidateLoc(x, root); 
+	}
+
+ 	/* ****************************************************************************************** */
+	/// Returns the would-be parent node if the given data is added. Returns true if the exact
+	/// data is found.
+  std::pair<bool,Node*> search_candidateLoc (const X& x, Node* curr) {
+		if(curr->left != NULL && comp(x, curr->value)) return search_candidateLoc(x, curr->left); 
+		else if(curr->right != NULL && comp(curr->value, x)) return search_candidateLoc(x, curr->right); 
+		else if(!comp(curr->value, x) && !comp(x, curr->value)) return std::make_pair(true,curr);
+		else return std::make_pair(false,curr);
 	}
 
  	/* ****************************************************************************************** */

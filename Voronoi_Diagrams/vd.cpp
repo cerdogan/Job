@@ -23,6 +23,8 @@
 using namespace std;
 using namespace Eigen;
 
+double sweepLine;
+
 vector <Vector2d> data;
 
 /* ******************************************************************************************** */
@@ -37,7 +39,7 @@ vector <vector <HalfEdge> > vertexEdges;		///< List of edges incident to a verte
 
 /* ******************************************************************************************** */
 /// Event data structures. Differentiate between Site and Circles.
-struct Event { Vector2d point; };
+struct Event { Vector2d point; virtual ~Event() {} };
 struct SiteEvent : Event { };
 struct CircleEvent : Event { vector <int> points; };
 
@@ -53,27 +55,61 @@ priority_queue <Event*, vector <Event*>, EventComparison> eventQueue;
 /// AVL tree to keep track of break points between beach line arcs and the site points (sorted
 /// by x locations)
 
-struct TreeNode { virtual double value () const = 0; };
-struct BreakNode {
+struct TreeNode { 
+	virtual ~TreeNode () {}
+	double value () const { return 0.0; } 
+};
+
+struct BreakNode : TreeNode {
 	Vector2d p0, p1;	
 	HalfEdge* edge;
-	inline double value () const { return 0.5 * (p0(0) + p1(0)); }
+
+	BreakNode(const Vector2d& p0_, const Vector2d& p1_) : p0(p0_), p1(p1_), edge(NULL) {}
+
+	/* ------------------------------------------------------------------------------- */
+	inline double value () const { 		// see breakPoint2.m, computes break point 
+
+    double x1 = p0(1), y1 = p0(2), x2 = p1(1), y2 = p1(2);
+    double m2 = (y2 - y1) / (x2 - x1), m = (-1.0 / m2);
+    double d = (p0-p1).norm() / 2.0;
+    double k = (y2 + y1) / 2.0 - sweepLine;
+    
+    double a = 1 / (m * m);
+    double b = - 2 * (1 + 1 / (m * m)) * k;
+    double c = k * k * ( 1 + 1 / (m * m) ) + d * d;
+    double delta = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
+    assert(delta > 0);
+    
+    double yn = sweepLine + delta;
+    double xn = ((x1 + x2) / 2) - 1 / m * (k - delta);
+		return xn;
+	}
+
 };
-struct SiteNode {
+
+struct SiteNode : TreeNode {
 	Vector2d point;			
 	CircleEvent* circleEvent;
+	SiteNode (const Vector2d& p) : point(p), circleEvent(NULL) {}
 	inline double value () const { return point(0); }
 };
 
-/* ----------------------------------------------------------------------------------- */
-bool compare (const TreeNode& x, const TreeNode& y) { return x.value() < y.value(); }
+/// To perform searches. AVL could have been better designed somehow. 
+struct DummyNode : TreeNode {
+	double val;
+	DummyNode (double x) : val(x) {}
+	inline double value () const { return val; }
+};
 
 /* ----------------------------------------------------------------------------------- */
-string print (const TreeNode& x) { 
-	const BreakNode* b = dynamic_cast <const BreakNode*> (&x);
+bool compare (TreeNode* x, TreeNode* y) { return x->value() < y->value(); }
+
+/* ----------------------------------------------------------------------------------- */
+string print (TreeNode* x) { 
+	const BreakNode* b = dynamic_cast <const BreakNode*> (x);
 	char buf [256];
 	if(b == NULL) {
-		const SiteNode* s = dynamic_cast <const SiteNode*> (&x);
+		const SiteNode* s = dynamic_cast <const SiteNode*> (x);
 		sprintf(buf, "sn: (%lf, %lf)", s->point(0), s->point(1));
 	}
 	else 
@@ -81,7 +117,7 @@ string print (const TreeNode& x) {
 	return string(buf);
 }
 
-AVL <TreeNode> avl (compare, print);
+AVL <TreeNode*> avl (compare, print);
 
 /* ******************************************************************************************** */
 void readData () {
@@ -105,6 +141,43 @@ void readData () {
 void vd () {
 
 	// Process the site and circle events 
+	while(!eventQueue.empty()) {
+
+		// Check if it is a site event
+		Event* event = eventQueue.top();
+		eventQueue.pop();
+		SiteEvent* siteEvent = dynamic_cast <SiteEvent*> (event);
+		if(siteEvent != NULL) {
+
+			printf("-----------------------------------------------------------\n");
+			
+			// Update the sweep line location
+			sweepLine = siteEvent->point(1);
+			printf("loc: (%lf, %lf)\n", siteEvent->point(0), siteEvent->point(1));
+
+			// Locate the existing arc information
+			SiteNode* parentSiteNode;
+			pair <bool, AVL<TreeNode*>::Node*> searchRes = 
+				avl.search_candidateLoc(new DummyNode(siteEvent->point(0)));
+			if(searchRes.second == NULL) {
+				parentSiteNode = NULL;
+				printf("Tree empty!\n");
+		
+				// Create a SiteNode for this new event 
+				avl.insert(new SiteNode(siteEvent->point));
+			}
+			else {
+				parentSiteNode = dynamic_cast <SiteNode*> ((searchRes.second->value));
+				assert(parentSiteNode != NULL);
+				printf("Parent location: (%lf, %lf)\n", parentSiteNode->point(0), parentSiteNode->point(1));
+			}
+		}
+
+		else {
+			CircleEvent* circleEvent = dynamic_cast <CircleEvent*> (event);
+		}
+
+	}
 	
 }
 
