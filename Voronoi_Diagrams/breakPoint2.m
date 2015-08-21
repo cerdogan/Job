@@ -8,18 +8,28 @@ function [] = breakPoint2 ()
 
     A = [2,7];
     B = [7,5];
+    A = [4.00, 8.17];
+    B = [2.68, 6.07];
     
-    C = [0,3];
-    D = [10,3];
-    for i = 1 : 10
-        C2 = [C(1), C(2) - i * 0.3];
-        D2 = [D(1), D(2) - i * 0.3];
-        P = breakPoint(A,B,C2,D2)
-        figure(2);
-        plot(P(1), P(2), 'o'); hold on;
-        P2 = test(A,B,C2(2))
-        assert(norm(P-P2) < 1e-4);
-    end
+    C = [0,6.07-0.01];
+    D = [10,6.07-0.01];
+    P = breakPoint(A,B,C,D)
+    figure(2);
+    plot(P(1), P(2), 'o'); hold on;
+    P2 = test(A,B,C(2))
+
+    
+%     C = [0,3];
+%     D = [10,3];
+%     for i = 1 : 10
+%         C2 = [C(1), C(2) - i * 0.3];
+%         D2 = [D(1), D(2) - i * 0.3];
+%         P = breakPoint(A,B,C2,D2)
+%         figure(2);
+%         plot(P(1), P(2), 'o'); hold on;
+%         P2 = test(A,B,C2(2))
+%         assert(norm(P-P2) < 1e-4);
+%     end
     
 end
 
@@ -34,8 +44,7 @@ function returnVal = test (C, D, y0)
     b = - 2 * (1 + 1 / (m * m)) * k;
     c = k * k * ( 1 + 1 / (m * m) ) + d * d;
     b * b - 4 * a * c;
-    delta = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
-    assert(delta > 0);
+    delta = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
     
     yn = y0 + delta;
     xn = ((x1 + x2) / 2) - 1 / m * (k - delta);

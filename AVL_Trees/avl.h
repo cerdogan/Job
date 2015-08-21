@@ -104,6 +104,18 @@ struct AVL {
 	}
 
  	/* ****************************************************************************************** */
+	void traversal_leaves (std::vector <std::pair<int,Node*> >& leaves) { 
+		traversal_leaves(root, leaves); 
+	}
+	void traversal_leaves (Node* curr, std::vector <std::pair<int,Node*> >& leaves) {
+		if(curr->left != NULL) traversal_leaves(curr->left, leaves);
+		if(curr->left == NULL && curr->right == NULL)  leaves.push_back(std::make_pair(2,curr));
+		else if(curr->left == NULL && curr->right != NULL)  leaves.push_back(std::make_pair(0,curr));
+		else if(curr->left != NULL && curr->right == NULL)  leaves.push_back(std::make_pair(1,curr));
+		if(curr->right != NULL) traversal_leaves(curr->right, leaves);
+	}
+
+ 	/* ****************************************************************************************** */
 	void traversal () { traversal(root); }
 	void traversal (Node* curr) {
 		if(curr->left != NULL) traversal(curr->left);
@@ -178,6 +190,7 @@ struct AVL {
 	/// Balances the tree with rotations
 	void retrace (Node* curr) {
 
+		return;
 		if(dbg) printf("Retrace for '%s'\n", toStr(curr->value).c_str());
 
 		int counter = 0;

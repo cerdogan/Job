@@ -55,21 +55,21 @@ priority_queue <Event*, vector <Event*>, EventComparison> eventQueue;
 /// AVL tree to keep track of break points between beach line arcs and the site points (sorted
 /// by x locations)
 
-struct TreeNode { 
-	virtual ~TreeNode () {}
-	double value () const { return 0.0; } 
-};
+struct TreeNode {
 
-struct BreakNode : TreeNode {
 	Vector2d p0, p1;	
 	HalfEdge* edge;
+	bool dummy;
 
-	BreakNode(const Vector2d& p0_, const Vector2d& p1_) : p0(p0_), p1(p1_), edge(NULL) {}
+	TreeNode(const Vector2d& p0_, const Vector2d& p1_, bool dummy_ = false) 
+		: p0(p0_), p1(p1_), edge(NULL), dummy(dummy_) {}
 
 	/* ------------------------------------------------------------------------------- */
 	inline double value () const { 		// see breakPoint2.m, computes break point 
 
-    double x1 = p0(1), y1 = p0(2), x2 = p1(1), y2 = p1(2);
+		if(dummy) return p0(0);
+
+    double x1 = p0(0), y1 = p0(1), x2 = p1(0), y2 = p1(1);
     double m2 = (y2 - y1) / (x2 - x1), m = (-1.0 / m2);
     double d = (p0-p1).norm() / 2.0;
     double k = (y2 + y1) / 2.0 - sweepLine;
@@ -77,8 +77,16 @@ struct BreakNode : TreeNode {
     double a = 1 / (m * m);
     double b = - 2 * (1 + 1 / (m * m)) * k;
     double c = k * k * ( 1 + 1 / (m * m) ) + d * d;
-    double delta = (-b - sqrt(b * b - 4 * a * c)) / (2 * a);
-    assert(delta > 0);
+		//printf("\t(a,b,c): (%lf,%lf,%lf)\n", a, b, c);
+		//printf("\tsqrt of %lf\n", (b * b - 4 * a * c));
+		double sq = b * b - 4 * a * c;
+		if(fabs(sq) < 1e-5) sq = 0.0;
+    double delta;
+		// if(y1 > y2) delta = (-b - sqrt(sq)) / (2 * a);
+		if(x1 < x2) delta = (-b - sqrt(sq)) / (2 * a);
+		else delta = (-b + sqrt(b * b - 4 * a * c)) / (2 * a);
+		//printf("\tdelta: %lf\n", delta);
+    // assert(delta > 0);
     
     double yn = sweepLine + delta;
     double xn = ((x1 + x2) / 2) - 1 / m * (k - delta);
@@ -87,33 +95,14 @@ struct BreakNode : TreeNode {
 
 };
 
-struct SiteNode : TreeNode {
-	Vector2d point;			
-	CircleEvent* circleEvent;
-	SiteNode (const Vector2d& p) : point(p), circleEvent(NULL) {}
-	inline double value () const { return point(0); }
-};
-
-/// To perform searches. AVL could have been better designed somehow. 
-struct DummyNode : TreeNode {
-	double val;
-	DummyNode (double x) : val(x) {}
-	inline double value () const { return val; }
-};
-
 /* ----------------------------------------------------------------------------------- */
 bool compare (TreeNode* x, TreeNode* y) { return x->value() < y->value(); }
 
 /* ----------------------------------------------------------------------------------- */
 string print (TreeNode* x) { 
-	const BreakNode* b = dynamic_cast <const BreakNode*> (x);
 	char buf [256];
-	if(b == NULL) {
-		const SiteNode* s = dynamic_cast <const SiteNode*> (x);
-		sprintf(buf, "sn: (%lf, %lf)", s->point(0), s->point(1));
-	}
-	else 
-		sprintf(buf, "sn: {(%lf, %lf), (%lf, %lf)}", b->p0(0), b->p0(1), b->p1(0), b->p1(1));
+	sprintf(buf, "{(%0.2lf, %0.2lf), (%0.2lf, %0.2lf)} {%0.2lf}", x->p0(0), x->p0(1), x->p1(0), x->p1(1),
+		x->value());
 	return string(buf);
 }
 
@@ -149,28 +138,58 @@ void vd () {
 		SiteEvent* siteEvent = dynamic_cast <SiteEvent*> (event);
 		if(siteEvent != NULL) {
 
+			avl.draw();
+			getchar();
 			printf("-----------------------------------------------------------\n");
 			
 			// Update the sweep line location
-			sweepLine = siteEvent->point(1);
+			sweepLine = siteEvent->point(1) - 0.01;
 			printf("loc: (%lf, %lf)\n", siteEvent->point(0), siteEvent->point(1));
 
 			// Locate the existing arc information
-			SiteNode* parentSiteNode;
 			pair <bool, AVL<TreeNode*>::Node*> searchRes = 
-				avl.search_candidateLoc(new DummyNode(siteEvent->point(0)));
+				avl.search_candidateLoc(new TreeNode(siteEvent->point, Vector2d(), true));
+
+			// The tree is empty. Temporarily add the site information as a dummy node
 			if(searchRes.second == NULL) {
-				parentSiteNode = NULL;
+				avl.insert(new TreeNode(siteEvent->point, Vector2d(), true));
 				printf("Tree empty!\n");
-		
-				// Create a SiteNode for this new event 
-				avl.insert(new SiteNode(siteEvent->point));
+				continue;
 			}
-			else {
-				parentSiteNode = dynamic_cast <SiteNode*> ((searchRes.second->value));
-				assert(parentSiteNode != NULL);
-				printf("Parent location: (%lf, %lf)\n", parentSiteNode->point(0), parentSiteNode->point(1));
+
+			// The tree still doesn't have a break point, but just a dummy site node information
+			TreeNode* parentNode = searchRes.second->value;
+			if(parentNode->dummy) {
+				avl.remove(parentNode);
+				avl.insert(new TreeNode(parentNode->p0, siteEvent->point));
+				avl.insert(new TreeNode(siteEvent->point, parentNode->p0));
+				printf("Tree dummy!\n");
+				continue;
 			}
+			
+			// Determine the site by comparing it with the found node value
+			Vector2d prevSiteLoc;
+			if(parentNode->value() < siteEvent->point(0)) prevSiteLoc = parentNode->p1;
+			else prevSiteLoc = parentNode->p0;
+			printf("Previous site loc: (%lf, %lf)\n", prevSiteLoc(0), prevSiteLoc(1)); 
+			
+			// Create the new break points
+ 			avl.insert(new TreeNode(siteEvent->point, prevSiteLoc));
+ 			avl.insert(new TreeNode(prevSiteLoc, siteEvent->point));
+
+			// Check for potential circle events
+			vector <pair<int, AVL<TreeNode*>::Node*> > leafParents;
+			avl.traversal_leaves(leafParents);
+			printf("Traversal: {");
+			for(int i = 0; i < leafParents.size(); i++) {
+				TreeNode* node = leafParents[i].second->value;
+				int type = leafParents[i].first;
+				if(type == 2) printf("(%lf, %lf), (%lf,%lf), ", node->p1(0), node->p1(1), node->p0(0), node->p0(1));
+				if(type == 0) printf("(%lf,%lf), ", node->p1(0), node->p1(1));
+				if(type == 1) printf("(%lf,%lf), ", node->p0(0), node->p0(1));
+			}
+			printf("\b\b}\n");
+
 		}
 
 		else {
@@ -186,4 +205,5 @@ int main () {
 
 	readData();
 	vd();
+	avl.draw();
 }
