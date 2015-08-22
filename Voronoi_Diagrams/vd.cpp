@@ -28,25 +28,6 @@ double sweepLine;
 vector <Vector2d> data;
 
 /* ******************************************************************************************** */
-struct Vector2dComp{
-    bool operator()(const Vector2d &lhs, const Vector2d &rhs){
-			static const bool dbg = 0;
-			if(dbg) cout << "inputs: " << lhs.transpose() << ", " << rhs.transpose() << endl;
-			if(rhs(0) - lhs(0) > 1e-5) {
-				if(dbg) printf("Returning true: 0 index is smaller\n");
-				return true;
-			}
-			else if((fabs(lhs(0) - rhs(0)) < 1e-5) && ((rhs(1) - lhs(1)) > 1e-5)) {
-				if(dbg) printf("Returning true: 0 is same, 1 index is smaller\n");
-				return true;
-			}
-			if(dbg) printf("Returning false\n");
-			return false;
-    }
-};
-set <Vector2d, Vector2dComp> allCircles;
-
-/* ******************************************************************************************** */
 struct HalfEdge {
 	Vector2d p0, p1;
 	int cell_idx;
@@ -54,7 +35,7 @@ struct HalfEdge {
 	HalfEdge () : twin(NULL), next(NULL), prev(NULL), cell_idx(-1) {}
 };
 
-vector <vector <HalfEdge> > cells;
+map <int, vector <HalfEdge*> > cells;
 vector <vector <HalfEdge> > vertexEdges;		///< List of edges incident to a vertex
 
 /* ******************************************************************************************** */
@@ -78,6 +59,26 @@ struct EventComparison {
 priority_queue <Event*, vector <Event*>, EventComparison> eventQueue;
 
 /* ******************************************************************************************** */
+struct Vector2dComp{
+    bool operator()(const pair<CircleEvent*,Vector2d>& lhs_, const pair<CircleEvent*,Vector2d>&rhs_){
+			static const bool dbg = 0;
+			Vector2d lhs = lhs_.second, rhs = rhs_.second;
+			if(dbg) cout << "inputs: " << lhs.transpose() << ", " << rhs.transpose() << endl;
+			if(rhs(0) - lhs(0) > 1e-5) {
+				if(dbg) printf("Returning true: 0 index is smaller\n");
+				return true;
+			}
+			else if((fabs(lhs(0) - rhs(0)) < 1e-5) && ((rhs(1) - lhs(1)) > 1e-5)) {
+				if(dbg) printf("Returning true: 0 is same, 1 index is smaller\n");
+				return true;
+			}
+			if(dbg) printf("Returning false\n");
+			return false;
+    }
+};
+set <pair<CircleEvent*, Vector2d>, Vector2dComp> allCircles;
+
+/* ******************************************************************************************** */
 /// AVL tree to keep track of break points between beach line arcs and the site points (sorted
 /// by x locations)
 
@@ -85,21 +86,30 @@ struct TreeNode {
 
 	int p0i, p1i;
 	Vector2d p0, p1;	
-	HalfEdge* edge;
+	HalfEdge* edge1;
+	HalfEdge* edge2;
 	vector <CircleEvent*> circleEvents;		// potential
 	bool dummy;
 
 	TreeNode(const Vector2d& p0_, const Vector2d& p1_, bool dummy_ = false) 
-		: p0(p0_), p1(p1_), edge(NULL), dummy(dummy_), p0i(-1), p1i(-1) {}
+		: p0(p0_), p1(p1_), edge1(NULL), edge2(NULL), dummy(dummy_), p0i(-1), p1i(-1) {}
 
 	TreeNode(int p0i_, int p1i_, bool dummy_ = false) 
-		: p0i(p0i_), p1i(p1i_), edge(NULL), dummy(dummy_) {
+		: p0i(p0i_), p1i(p1i_), dummy(dummy_) {
 		if(p0i > -1) p0 = data[p0i];
 		if(p1i > -1) p1 = data[p1i];
 
-		// Create the half edge record
-		edge = new HalfEdge();
-		value(&(edge->p0));	
+		// Create the half edge records
+		edge1 = new HalfEdge();
+		edge2 = new HalfEdge();
+		value(&(edge1->p0));	
+		value(&(edge2->p0));	
+		edge1->twin = edge2;
+		edge2->twin = edge1;
+		edge1->cell_idx = p0i;
+		edge2->cell_idx = p1i;
+		cells[p0i].push_back(edge1);
+		cells[p1i].push_back(edge2);
 	}
 
 	/* ------------------------------------------------------------------------------- */
@@ -242,13 +252,19 @@ void vd () {
 			printf("Previous site idx: (%d)\n", prevSiteIdx);
 			
 			// Create the new break points
- 			avl.insert(new TreeNode(siteEvent->pi, prevSiteIdx));
- 			avl.insert(new TreeNode(prevSiteIdx, siteEvent->pi));
+			TreeNode* newNode1 = new TreeNode(siteEvent->pi, prevSiteIdx);
+			TreeNode* newNode2 = new TreeNode(prevSiteIdx, siteEvent->pi);
+ 			avl.insert(newNode1);
+ 			avl.insert(newNode2);
 
 			// Check for "false alarms" for circle events
+			set <pair<CircleEvent*, Vector2d>, Vector2dComp>::iterator it =  allCircles.begin();
 			printf("# parent circles: %d\n", parentNode->circleEvents.size());
-			for(size_t c_i = 0; c_i < parentNode->circleEvents.size(); c_i++) {
-				CircleEvent* ce = parentNode->circleEvents[c_i];
+//			for(size_t c_i = 0; c_i < parentNode->circleEvents.size(); c_i++) {
+			for(; it != allCircles.end(); it++) {
+//				CircleEvent* ce = parentNode->circleEvents[c_i];
+				CircleEvent* ce = it->first;
+				printf("\tTriplet (%d,%d,%d)\n", ce->points(0), ce->points(1), ce->points(2)); 
 				if((ce->center - siteEvent->point).norm() < ce->radius) {
 					printf("\tRemoving triplet: (%d,%d,%d)\n", ce->points(0),ce->points(1),ce->points(2));
 					ce->falseAlarm = true;
@@ -295,7 +311,7 @@ void vd () {
 				printf("radius: %lf, sweepLine: %lf\n", radius, sweepLine);
 				if(temp_y < sweepLine) { 
 
-					if (allCircles.find(center) != allCircles.end()) {
+					if (allCircles.find(make_pair((CircleEvent*) NULL, center)) != allCircles.end()) {
 						printf("\tTriplet (%d,%d,%d), (%lf, %lf) already exists.\n", i0, i1, i2, center(0), center(1));
 						printf("all circles #: %lu\n", allCircles.size());
 						continue;
@@ -308,7 +324,7 @@ void vd () {
 					ce->center = center;
 					ce->radius = radius;
 					eventQueue.push(ce);
-					allCircles.insert(ce->center);
+					allCircles.insert(make_pair(ce, ce->center));
 					printf("\tAdding triplet: (%d,%d,%d), (%lf, %lf)\n", i0, i1, i2, center(0), center(1));
 
 					// Register the circle event with the involved arcs
@@ -403,33 +419,6 @@ void vd () {
 					ce->falseAlarm = true;
 			}
 
-//			priority_queue <Event*, vector <Event*>, EventComparison> eq;
-//			while(!eventQueue.empty()) {
-//				Event* event = eventQueue.top();
-//				eventQueue.pop();
-//				bool toDelete = false;
-//				for(int ce_i = 0; ce_i < node1->circleEvents.size(); ce_i++) {
-//					if(event == node1->circleEvents[ce_i]) {
-//						CircleEvent* ce = node1->circleEvents[ce_i];
-//						printf("\tDeleting triplet: (%d,%d,%d)\n", ce->points(0),ce->points(1),ce->points(2));
-//						toDelete = true;
-//						break;
-//					}
-//				}
-//				if(!toDelete) {
-//					for(int ce_i = 0; ce_i < node2->circleEvents.size(); ce_i++) {
-//						if(event == node2->circleEvents[ce_i]) {
-//							CircleEvent* ce = node2->circleEvents[ce_i];
-//							printf("\tDeleting triplet: (%d,%d,%d)\n", ce->points(0),ce->points(1),ce->points(2));
-//							toDelete = true;
-//							break;
-//						}
-//					}
-//				}
-//				if(!toDelete) eq.push(event);
-//			}
-//			eventQueue = eq;
-
 			// Remove the arc from the tree
 			avl.remove(node1);
 			avl.remove(node2);
@@ -446,8 +435,29 @@ void vd () {
 			printf("Inserted new node: '%s'\n", print(newNode).c_str());
 
 			// Set the second points of the completed voronoi edges
-			node1->p1 = ce->center;
-			node2->p1 = ce->center;
+			node1->edge1->p1 = ce->center;
+			node1->edge2->p0 = ce->center;
+			node2->edge1->p1 = ce->center;
+			node2->edge2->p0 = ce->center;
+
+			// Find angles around the cell center to place them ccw
+			HalfEdge* e1 = node1->edge1, *e2 = node2->edge2;
+			int site_idx = (node1->p0i == node2->p1i) ? node1->p0i : node1->p1i;
+			Vector2d site = data[site_idx];
+			Vector2d v1 = (0.5 * (e1->p0 + e1->p1) - site).normalized();
+			Vector2d v2 = (0.5 * (e2->p0 + e2->p1) - site).normalized();
+			double angle1 = atan2(v1(1), v1(0)) + (v1(1) < 0 ? 2*M_PI : 0);
+			double angle2 = atan2(v2(1), v2(0)) + (v2(1) < 0 ? 2*M_PI : 0);
+			if((angle1 < angle2) && fabs(angle1-angle2) > M_PI) angle1 += 2*M_PI;
+			else if((angle2 < angle1) && fabs(angle2-angle1) > M_PI) angle2 += 2*M_PI;
+			if(angle1 > angle2) {
+				e1->prev = e2;
+				e2->next = e1;
+			}
+			else {
+				e2->prev = e1;
+				e1->next = e2;
+			}
 
 			// Get the leaf information to check for circles again
 			vector <pair<int, AVL<TreeNode*>::Node*> > leafParents;
@@ -485,7 +495,7 @@ void vd () {
 				Vector2d center = fitCircle(data[i0], data[i1], data[i2]);
 				double temp_y = center(1) - (data[i0]-center).norm();
 				printf("idx: %d, center: (%lf, %lf), temp_y: %lf\n", s_i, center(0), center(1), temp_y);
-				if(temp_y < sweepLine && (allCircles.find(center) == allCircles.end())) {
+				if(temp_y < sweepLine && (allCircles.find(make_pair((CircleEvent*) NULL, center)) == allCircles.end())) {
 
 					// Create the circle event
 					CircleEvent* ce = new CircleEvent();
@@ -493,7 +503,7 @@ void vd () {
 					ce->points = Vector3i(i0,i1,i2);
 					ce->center = center;
 					eventQueue.push(ce);
-					allCircles.insert(ce->center);
+					allCircles.insert(make_pair(ce, ce->center));
 
 					// Register the circle event with the involved arcs
 					sites[s_i].second->circleEvents.push_back(ce);
