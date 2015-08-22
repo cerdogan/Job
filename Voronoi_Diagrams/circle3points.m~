@@ -1,0 +1,28 @@
+% @file circle3points.m
+% @author Can Erdogan
+% @date 2015-08-21
+% @brief Finds the circle that connects three points.
+
+% Read the four points
+points = []
+clf
+axis([0 10 0 10]); hold on;
+for i = 1 : 3
+    [x,y,m] = ginput(1);
+    if(m == 3), break; end;
+    points(end+1, :) = [x,y];
+    plot(x,y, 'o'); hold on;
+end;
+A = points(1,:);
+B = points(2,:);
+C = points(3,:);
+
+% Find the perpendicular bisectors
+AB = (A + B) / 2.0;
+BC = (B + C) / 2.0;
+ABdir = (B-A)/norm(B-A);
+ABperp = (ABdir(2), -ABdir(1));
+AB2 = AB + ABperp * 10;
+ABdir = (B-A)/norm(B-A);
+ABperp = (ABdir(2), -ABdir(1));
+AB2 = AB + ABperp * 10;

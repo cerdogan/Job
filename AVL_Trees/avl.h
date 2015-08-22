@@ -34,6 +34,62 @@ struct AVL {
 	Node* root;									///< Root of the tree
 	FILE* graphFile;
 
+	/* ****************************************************************************************** */
+	/// Returns the previous item in the binary search tree
+	Node* prev (Node* curr) {
+
+		// If node has a left subtree, get the right-most node in there
+		if(curr->left != NULL) {
+			Node* temp = curr->left, *temp2 = temp->right;
+			while(temp2 != NULL) {
+				temp = temp2;
+				temp2 = temp->right;
+			}
+			return temp;
+		}		
+
+		// Otherwise, if it has a parent, get the first "right-child" of its parent tree
+		Node* temp = curr;
+		while(true) {
+			Node* parent = temp->parent;
+			if(parent == NULL) break;
+			if(parent->right == temp) return parent;
+			temp = parent;
+		}
+
+		// Otherwise, this must have been the left most node. 
+		return NULL;
+	}
+
+ 	/* ****************************************************************************************** */
+	/// Returns the next item in the binary search tree
+	Node* next (Node* curr) {
+
+		// If node has a right subtree, get the left-most node in there
+		if(curr->right != NULL) {
+			printf("hi\n");
+			Node* temp = curr->right, *temp2 = temp->left;
+			while(temp2 != NULL) {
+				temp = temp2;
+				temp2 = temp->left;
+			}
+			return temp;
+		}		
+
+		// Otherwise, if it has a parent, get the first "left-child" of its parent tree
+		Node* temp = curr;
+		while(true) {
+			printf("hi2\n");
+			Node* parent = temp->parent;
+			if(parent == NULL) break;
+			if(parent->left == temp) return parent;
+			temp = parent;
+		}
+
+		// Otherwise, this must have been the right most node. 
+		return NULL;
+	}
+
  	/* ****************************************************************************************** */
 	Node* search (const X& x) { 
 		if(root == NULL) return NULL;
@@ -58,6 +114,7 @@ struct AVL {
 	/// Returns the would-be parent node if the given data is added. Returns true if the exact
 	/// data is found.
   std::pair<bool,Node*> search_candidateLoc (const X& x, Node* curr) {
+		printf("%s: x: '%s', curr: '%s'\n", __FUNCTION__, print(x).c_str(), print(curr->value).c_str());
 		if(curr->left != NULL && comp(x, curr->value)) return search_candidateLoc(x, curr->left); 
 		else if(curr->right != NULL && comp(curr->value, x)) return search_candidateLoc(x, curr->right); 
 		else if(!comp(curr->value, x) && !comp(x, curr->value)) return std::make_pair(true,curr);
@@ -76,6 +133,7 @@ struct AVL {
 		fprintf(graphFile, "}\n");
 		fclose(graphFile);
 		system("dot -Tpng graph.dot -o graph.png; eog graph.png &");
+		printf("Drawn.\n");
 	}
 
  	/* ****************************************************************************************** */
@@ -372,7 +430,6 @@ struct AVL {
 					curr->right->parent = NULL;
 					return NULL;
 				}
-				delete curr;
 			}
 
 			// Case 2: two children
