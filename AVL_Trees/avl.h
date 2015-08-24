@@ -67,7 +67,6 @@ struct AVL {
 
 		// If node has a right subtree, get the left-most node in there
 		if(curr->right != NULL) {
-			printf("hi\n");
 			Node* temp = curr->right, *temp2 = temp->left;
 			while(temp2 != NULL) {
 				temp = temp2;
@@ -79,7 +78,6 @@ struct AVL {
 		// Otherwise, if it has a parent, get the first "left-child" of its parent tree
 		Node* temp = curr;
 		while(true) {
-			printf("hi2\n");
 			Node* parent = temp->parent;
 			if(parent == NULL) break;
 			if(parent->left == temp) return parent;
@@ -174,11 +172,11 @@ struct AVL {
 	}
 
  	/* ****************************************************************************************** */
-	void traversal () { traversal(root); }
-	void traversal (Node* curr) {
-		if(curr->left != NULL) traversal(curr->left);
-		printf("'%s' ", toStr(curr->value).c_str());
-		if(curr->right != NULL) traversal(curr->right);
+	void traversal (std::vector <Node*>& nodes) { traversal(root, nodes); }
+	void traversal (Node* curr, std::vector <Node* >& nodes) {
+		if(curr->left != NULL) traversal(curr->left, nodes);
+		nodes.push_back(curr);
+		if(curr->right != NULL) traversal(curr->right, nodes);
 
 	}
 
@@ -446,13 +444,13 @@ struct AVL {
 
 				// Set the successor at the current location
 				if(curr->parent) {
+					if(succ != curr->right) connect(curr->right, succ, false);
 					if(succ->parent) {
 						if(succ->parent->left == succ) succ->parent->left = NULL;
 						else succ->parent->right = NULL;
 					}
 					connect(succ, curr->parent, (curr->parent->left == curr));
 					connect(curr->left, succ, true);
-					if(succ != curr->right) connect(curr->right, succ, false);
 					return succ;
 				}
 				else {

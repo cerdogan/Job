@@ -28,6 +28,10 @@ double sweepLine;
 vector <Vector2d> data;
 
 /* ******************************************************************************************** */
+void getchar2() { // getchar(); 
+}
+
+/* ******************************************************************************************** */
 struct HalfEdge {
 	Vector2d p0, p1;
 	int cell_idx;
@@ -46,8 +50,8 @@ struct CircleEvent : Event { 		// point is used for the bottom of the circle
 	Vector2d center; 
 	Vector3i points; 
 	double radius;
-	bool falseAlarm;
-	CircleEvent () : falseAlarm(false) {}
+	bool falseAlarm, falseAlarmCircle;
+	CircleEvent () : falseAlarm(false), falseAlarmCircle(false) {}
 };	
 
 struct EventComparison {
@@ -100,16 +104,20 @@ struct TreeNode {
 		if(p1i > -1) p1 = data[p1i];
 
 		// Create the half edge records
-		edge1 = new HalfEdge();
-		edge2 = new HalfEdge();
-		value(&(edge1->p0));	
-		value(&(edge2->p0));	
-		edge1->twin = edge2;
-		edge2->twin = edge1;
-		edge1->cell_idx = p0i;
-		edge2->cell_idx = p1i;
-		cells[p0i].push_back(edge1);
-		cells[p1i].push_back(edge2);
+		if((p0i >= 0) && (p1i >= 0)) {
+			edge1 = new HalfEdge();
+			edge2 = new HalfEdge();
+			value(&(edge1->p0));	
+			value(&(edge2->p0));	
+			edge1->twin = edge2;
+			edge2->twin = edge1;
+			edge1->cell_idx = p0i;
+			edge2->cell_idx = p1i;
+			cells[p0i].push_back(edge1);
+			cells[p0i].push_back(edge2);
+			cells[p1i].push_back(edge1);
+			cells[p1i].push_back(edge2);
+		}
 	}
 
 	/* ------------------------------------------------------------------------------- */
@@ -206,8 +214,8 @@ void vd () {
 	// Process the site and circle events 
 	while(!eventQueue.empty()) {
 
-		avl.draw();
-		getchar();
+		// avl.draw();
+		getchar2();
 
 		// Check if it is a site event
 		Event* event = eventQueue.top();
@@ -221,8 +229,8 @@ void vd () {
 			sweepLine = siteEvent->point(1) - 0.0001;
 			printf("sweepLine: %lf\n", sweepLine);
 			printf("new site: (%lf, %lf)\n", siteEvent->point(0), siteEvent->point(1));
-			avl.draw();
-			getchar();
+			//avl.draw();
+			getchar2();
 
 			// Locate the existing arc information
 			pair <bool, AVL<TreeNode*>::Node*> searchRes = 
@@ -347,11 +355,11 @@ void vd () {
 				ce->points(0), ce->points(1), ce->points(2));
 			sweepLine = ce->point(1) + 0.00001;
 			printf("sweepLine: %lf\n", sweepLine);
-			avl.draw();
-			getchar();
+			// avl.draw();
+			getchar2();
 
 			// Check if false alarm
-			if(ce->falseAlarm) {
+			if(ce->falseAlarm || ce->falseAlarmCircle) {
 				printf("\tFalse alarm!\n");
 				continue;
 			}
@@ -367,28 +375,37 @@ void vd () {
 			// Fix node1 if next one is better
 			AVL<TreeNode*>::Node* temp = avl.next(searchNode);
 			AVL<TreeNode*>::Node* temp2 = avl.prev(searchNode);
-			printf("temp: '%s'\n", print(temp->value).c_str());
-			printf("temp2: '%s'\n", print(temp2->value).c_str());
+			if(temp != NULL) printf("temp: '%s'\n", print(temp->value).c_str());
+			if(temp != NULL) printf("temp2: '%s'\n", print(temp2->value).c_str());
 			double diff1 = (node1->value() - ce->point(0));
-			double diff2 = (temp->value->value() - ce->point(0));
-			double diff3 = (temp2->value->value() - ce->point(0));
+			double diff2 = (temp == NULL) ? 1000.0 : (temp->value->value() - ce->point(0));
+			double diff3 = (temp2 == NULL) ? 1000.0 : (temp2->value->value() - ce->point(0));
 			printf("\t%lf vs %lf\n", diff1, diff2);
 			if(fabs(diff2) < fabs(diff1)) {
 				node1 = temp->value;
 				searchNode = temp;
+				printf("\t\tupdating node1 with temp\n");
 			}
 			printf("\t%lf vs %lf\n", diff1, diff3);
 			if(fabs(diff3) < fabs(diff1)) {
 				node1 = temp2->value;
 				searchNode = temp2;
+				printf("\t\tupdating node1 with temp2\n");
 			}
 			printf("node1: (%d,%d)\n", node1->p0i, node1->p1i);
 
+			// Skip if the node can't be found
+			double diff = (node1->value() - ce->point(0));
+			if(fabs(diff) > 0.05) {
+				printf("Skipping a circle event (node1) because it is behind the beach line\n");
+				continue;
+			}
+
 			// Determine the other node
 			AVL<TreeNode*>::Node* opt1 = avl.next(searchNode);
-			printf("opt1: '%s'\n", print(opt1->value).c_str());
+			if(opt1 != NULL) printf("opt1: '%s'\n", print(opt1->value).c_str());
 			AVL<TreeNode*>::Node* opt2 = avl.prev(searchNode);
-			printf("opt2: '%s'\n", print(opt2->value).c_str());
+			if(opt2 != NULL) printf("opt2: '%s'\n", print(opt2->value).c_str());
 			TreeNode* node2;
 			if(opt1 == NULL) node2 = opt2->value;
 			else if(opt2 == NULL) node2 = opt1->value;
@@ -400,28 +417,62 @@ void vd () {
 				else node2 = opt2->value;
 			}
 
+			// Skip if the node can't be found
+			diff = (node2->value() - ce->point(0));
+			if(fabs(diff) > 0.05) {
+				printf("Skipping a circle event (node2) because it is behind the beach line\n");
+				continue;
+			}
+
 			printf("node1: (%d,%d)\n", node1->p0i, node1->p1i);
 			printf("node2: (%d,%d)\n", node2->p0i, node2->p1i);
-			
+
+			// Remove any potential circles that were going to use one of the break points for 
+			// convergence that just got merged into a voronoi vertex.
+			set <pair<CircleEvent*, Vector2d>, Vector2dComp>::iterator it =  allCircles.begin();
+			int si0 = ce->points(0), si1 = ce->points(1), si2 = ce->points(2); 
+			for(; it != allCircles.end(); it++) {
+				CircleEvent* ce = it->first;
+				int i0 = ce->points(0), i1 = ce->points(1), i2 = ce->points(2); 
+				bool remove = false;
+				if((i0 == si0 && i1 == si1) || (i1 == si0 && i2 == si1) || 
+					(i0 == si1 && i1 == si0) || (i1 == si1 && i2 == si0)) remove = true; 
+				if((i0 == si1 && i1 == si2) || (i1 == si1 && i2 == si2) || 
+					(i0 == si2 && i1 == si1) || (i1 == si2 && i2 == si1)) remove = true; 
+				
+				if(remove) {
+					printf("\tRemoving triplet: (%d,%d,%d)\n", i0, i1, i2);
+					ce->falseAlarmCircle = true;
+				}
+			}
+	
 			// Remove the potential circle events from these nodes
 			for(int ce_i = 0; ce_i < node1->circleEvents.size(); ce_i++) {
 				CircleEvent* ce = node1->circleEvents[ce_i];
 				if(ce->points[0] == node1->p0i && ce->points[1] == node1->p1i)
-					ce->falseAlarm = true;
+					ce->falseAlarmCircle = true;
 				if(ce->points[1] == node1->p0i && ce->points[2] == node1->p1i)
-					ce->falseAlarm = true;
+					ce->falseAlarmCircle = true;
 			}
 			for(int ce_i = 0; ce_i < node2->circleEvents.size(); ce_i++) {
 				CircleEvent* ce = node2->circleEvents[ce_i];
 				if(ce->points[0] == node2->p0i && ce->points[1] == node2->p1i)
-					ce->falseAlarm = true;
+					ce->falseAlarmCircle = true;
 				if(ce->points[1] == node2->p0i && ce->points[2] == node2->p1i)
-					ce->falseAlarm = true;
+					ce->falseAlarmCircle = true;
 			}
 
 			// Remove the arc from the tree
+			printf("Before removes\n");
+			getchar2();
 			avl.remove(node1);
+			// avl.draw();
+			printf("Drawn after remove 1\n");
+			getchar2();
 			avl.remove(node2);
+			// avl.draw();
+			printf("Drawn after remove 2\n");
+			getchar2();
 
 			// Add the new break point 
 			TreeNode* newNode;
@@ -495,25 +546,39 @@ void vd () {
 				Vector2d center = fitCircle(data[i0], data[i1], data[i2]);
 				double temp_y = center(1) - (data[i0]-center).norm();
 				printf("idx: %d, center: (%lf, %lf), temp_y: %lf\n", s_i, center(0), center(1), temp_y);
-				if(temp_y < sweepLine && (allCircles.find(make_pair((CircleEvent*) NULL, center)) == allCircles.end())) {
+				if(temp_y < sweepLine) { 
 
-					// Create the circle event
-					CircleEvent* ce = new CircleEvent();
-					ce->point = Vector2d(center(0), temp_y);
-					ce->points = Vector3i(i0,i1,i2);
-					ce->center = center;
-					eventQueue.push(ce);
-					allCircles.insert(make_pair(ce, ce->center));
+					// Check if it existed before
+					set <pair<CircleEvent*, Vector2d>, Vector2dComp>::iterator it =
+						allCircles.find(make_pair((CircleEvent*) NULL, center));
+					if(it != allCircles.end() && it->first->falseAlarmCircle){
 
-					// Register the circle event with the involved arcs
-					sites[s_i].second->circleEvents.push_back(ce);
-					sites[s_i+1].second->circleEvents.push_back(ce);
-					sites[s_i+2].second->circleEvents.push_back(ce);
+						printf("\tTurning on an old false alarm for triplet: %d, %d, %d.\n", it->first->points(0), it->first->points(1), it->first->points(2));
+						it->first->falseAlarmCircle = false;
+						getchar2();
+						continue;
+					}
+					else if(it == allCircles.end()) {
+
+						// Create the circle event
+						CircleEvent* ce = new CircleEvent();
+						ce->point = Vector2d(center(0), temp_y);
+						ce->points = Vector3i(i0,i1,i2);
+						ce->center = center;
+						eventQueue.push(ce);
+						allCircles.insert(make_pair(ce, ce->center));
+						printf("\tAdding triplet: (%d, %d, %d)\n", i0, i1, i2);
+
+						// Register the circle event with the involved arcs
+						sites[s_i].second->circleEvents.push_back(ce);
+						sites[s_i+1].second->circleEvents.push_back(ce);
+						sites[s_i+2].second->circleEvents.push_back(ce);
+					}
 				}
 
 			}
 
-			getchar();
+			getchar2();
 		}
 
 		
@@ -522,9 +587,47 @@ void vd () {
 }
 
 /* ******************************************************************************************** */
+void termination () {
+
+	
+	sweepLine -= 3.0;
+	vector <AVL<TreeNode*>::Node*> nodes;
+	avl.traversal(nodes);
+	for(int i = 0; i < nodes.size(); i++) {
+		printf("awef\n");
+			TreeNode* node = nodes[i]->value;
+			Vector2d temp;
+			node->value(&temp);
+			cout << "\t" << temp.transpose() << endl;
+			node->edge1->p1 = temp;
+			node->edge2->p0 = temp;
+	}
+}
+
+/* ******************************************************************************************** */
 int main () {
 
 	readData();
 	vd();
-	avl.draw();
+	//avl.draw();
+	termination();
+	
+	FILE* file = fopen("edges", "w");
+	map <int, vector <HalfEdge*> >::iterator it = cells.begin();
+	int cell_c = 0;
+	for(; it != cells.end(); it++, cell_c++) {
+		// printf("%d: %d\n", it->first, it->second.size());
+		for(int i = 0; i < it->second.size(); i++) {
+			Vector2d p0 = it->second[i]->p0;
+			Vector2d p1 = it->second[i]->p1;
+			if(p1(1) < p0(1)) {
+				Vector2d temp = p0;
+				p0 = p1;
+				p1 = temp;
+			}
+			if(p1.norm() > 1e-5 && p0.norm() > 1e-5)
+				fprintf(file, "%lf %lf %lf %lf %d\n", p0(0), p0(1), p1(0), p1(1), cell_c);
+		}
+	}
+	fclose(file);
 }
